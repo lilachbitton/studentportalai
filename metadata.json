@@ -1,0 +1,6 @@
+{
+  "name": "Business Express Student Portal",
+  "description": "A student portal for Business Express. It features a login/registration system and a comprehensive dashboard for students to manage their courses, payments, and schedule.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

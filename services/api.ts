@@ -6,14 +6,15 @@
  * It now uses Firebase for authentication and will use Firestore for data.
  */
 import { v4 as uuidv4 } from 'uuid';
-import { auth, db } from './firebase';
+import { auth, db, storage } from './firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   sendPasswordResetEmail,
   signOut
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore"; 
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore"; 
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 import type { Course, Lesson, StudentProfileData } from '../pages/StudentDashboard';
 import type { Ticket, ConversationMessage } from '../pages/TicketsPage';
@@ -62,11 +63,6 @@ let mockTickets: Ticket[] = [
         {sender: 'you', name: 'ישראל ישראלי', text: 'עובד, תודה רבה!', time: '18.09.2024 18:01'},
     ]},
 ];
-
-let mockProfile: StudentProfileData = {
-    personal: { name: 'ישראל ישראלי', email: 'israel@example.com', phone: '050-1234567', imageUrl: 'https://i.pravatar.cc/150?u=israel' },
-    professional: { title: 'יזם', company: 'סטארטאפ בע"מ', bio: 'יזם בתחום הטכנולוגיה, מתמחה בפיתוח מוצרים חדשניים.' }
-};
 
 let mockUnreadStatus = { tickets: ['TKT-001'], lessons: ['l1-2'] };
 
@@ -157,11 +153,8 @@ export const api = {
 
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
-        // Assuming role is stored in the document, default to 'student' if not found
         return { success: true, role: userData.role || 'student' };
       } else {
-        // This case might happen if user was created in Auth but not in Firestore
-        // For now, we'll treat them as a student.
         console.warn("User document not found in Firestore for UID:", user.uid);
         return { success: true, role: 'student' };
       }
@@ -181,12 +174,13 @@ export const api = {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Now, save additional user data to Firestore
       await setDoc(doc(db, "users", user.uid), {
         fullName: fullName,
         email: email,
         phone: phone,
-        role: 'student' // Assign 'student' role upon registration
+        role: 'student',
+        personal: { name: fullName, email, phone, imageUrl: '/default-avatar.png' },
+        professional: { title: '', company: '', bio: '' }
       });
 
       return { success: true };
@@ -217,7 +211,6 @@ export const api = {
       return { success: true, message: 'אם קיים חשבון עם כתובת המייל, ישלח אליך קישור לאיפוס סיסמה.' };
     } catch (error) {
        console.error("Firebase password reset error:", error.code);
-       // We return a generic success message for security reasons (to not reveal which emails are registered)
        return { success: true, message: 'אם קיים חשבון עם כתובת המייל, ישלח אליך קישור לאיפוס סיסמה.' };
     }
   },
@@ -236,46 +229,30 @@ export const api = {
     await delay(300);
     const user = auth.currentUser;
     if (!user) return [];
-
-    const userDocRef = doc(db, "users", user.uid);
-    const userDocSnap = await getDoc(userDocRef);
-    
-    // A newly registered user won't have an 'enrollments' field until an admin adds them.
-    if (userDocSnap.exists() && userDocSnap.data().enrollments?.length > 0) {
-        // This user is enrolled in courses. For now, we return all mock courses.
-        // A real implementation would fetch specific courses based on enrollment IDs.
-        return mockCourses;
-    }
-
-    // New user with no enrollments gets an empty course list.
     return [];
   },
 
   async getTickets() {
     await delay(300);
-    const user = auth.currentUser;
-    if (!user) return [];
+    if (!auth.currentUser) return [];
     return [];
   },
 
   async getTasks() {
     await delay(300);
-    const user = auth.currentUser;
-    if (!user) return [];
+    if (!auth.currentUser) return [];
     return [];
   },
   
   async getSchedule() {
     await delay(300);
-    const user = auth.currentUser;
-    if (!user) return [];
+    if (!auth.currentUser) return [];
     return [];
   },
 
   async getKeyUpdates() {
     await delay(300);
-    const user = auth.currentUser;
-    if (!user) return [];
+    if (!auth.currentUser) return [];
     return [];
   },
   
@@ -283,9 +260,8 @@ export const api = {
     await delay(300);
     const user = auth.currentUser;
     if (!user) {
-        // Return a default empty profile if no user is logged in
         return {
-            personal: { name: 'אורח', email: '', phone: '', imageUrl: 'https://i.pravatar.cc/150' },
+            personal: { name: 'אורח', email: '', phone: '', imageUrl: '/default-avatar.png' },
             professional: { title: '', company: '', bio: '' }
         };
     }
@@ -294,27 +270,24 @@ export const api = {
     const userDocSnap = await getDoc(userDocRef);
 
     if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
+        const data = userDocSnap.data();
         return {
             personal: {
-                name: userData.fullName || 'שם לא זמין',
-                email: userData.email || user.email,
-                phone: userData.phone || '',
-                // Use a consistent avatar for each user based on their email
-                imageUrl: `https://i.pravatar.cc/150?u=${user.email}` 
+                name: data.personal?.name || data.fullName || 'שם לא זמין',
+                email: data.personal?.email || data.email || user.email,
+                phone: data.personal?.phone || data.phone || '',
+                imageUrl: data.personal?.imageUrl || '/default-avatar.png'
             },
             professional: {
-                // Return empty professional details if they don't exist yet
-                title: userData.professional?.title || '',
-                company: userData.professional?.company || '',
-                bio: userData.professional?.bio || ''
+                title: data.professional?.title || '',
+                company: data.professional?.company || '',
+                bio: data.professional?.bio || ''
             }
         };
     } else {
-        // Fallback if firestore doc is missing for some reason
         console.warn("User document not found in Firestore for UID:", user.uid);
         return {
-            personal: { name: user.displayName || 'משתמש חדש', email: user.email, phone: '', imageUrl: `https://i.pravatar.cc/150?u=${user.email}` },
+            personal: { name: 'משתמש חדש', email: user.email, phone: '', imageUrl: '/default-avatar.png' },
             professional: { title: '', company: '', bio: '' }
         };
     }
@@ -326,21 +299,58 @@ export const api = {
   },
   
   async updateProfile(newProfileData) {
-      await delay(400);
-      mockProfile = newProfileData;
-      return mockProfile;
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const userDocRef = doc(db, "users", user.uid);
+    try {
+        await updateDoc(userDocRef, {
+            personal: newProfileData.personal,
+            professional: newProfileData.professional,
+            // also update top-level fields for backwards compatibility
+            fullName: newProfileData.personal.name, 
+            email: newProfileData.personal.email,
+            phone: newProfileData.personal.phone,
+        });
+        return newProfileData;
+    } catch (error) {
+        console.error("Error updating profile in Firestore:", error);
+        throw error;
+    }
+  },
+
+  async uploadProfileImage(file) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+    try {
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+          "personal.imageUrl": downloadURL
+      });
+      
+      return downloadURL;
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
+      throw error;
+    }
   },
 
   async addTicket(ticketData, studentName) {
       await delay(400);
-      const newTicket = {
+      // Fix: Explicitly type the new ticket object to match the `Ticket` interface.
+      const newTicket: Ticket = {
             id: `TKT-${String(mockTickets.length + 1).padStart(3, '0')}`,
             lastUpdate: new Date().toLocaleDateString('he-IL'),
-            status: 'פתוחה' as const,
+            status: 'פתוחה',
             subject: ticketData.subject,
             teamMember: ticketData.teamMember,
             conversation: [{
-                sender: 'you' as const,
+                sender: 'you',
                 name: studentName,
                 text: ticketData.message,
                 time: new Date().toLocaleDateString('he-IL')
@@ -356,9 +366,9 @@ export const api = {
       mockTickets = mockTickets.map(t => {
           if (t.id === ticketId) {
               const newConversation = {
-                    sender: 'you' as const, name: studentName, text: replyText, time: new Date().toLocaleString('he-IL')
+                    sender: 'you', name: studentName, text: replyText, time: new Date().toLocaleString('he-IL')
                 };
-              updatedTicket = { ...t, conversation: [...t.conversation, newConversation], lastUpdate: new Date().toLocaleDateString('he-IL'), status: 'פתוחה' as const };
+              updatedTicket = { ...t, conversation: [...t.conversation, newConversation], lastUpdate: new Date().toLocaleDateString('he-IL'), status: 'פתוחה' };
               return updatedTicket;
           }
           return t;
@@ -367,11 +377,11 @@ export const api = {
   },
   
    async simulateMentorReply(ticketId) {
-      await delay(100); // No real network call
+      await delay(100); 
       let updatedTicket;
       mockTickets = mockTickets.map(t => {
           if (t.id === ticketId) {
-              const mentorReply = { sender: 'other' as const, name: t.teamMember, text: 'תודה על תגובתך, אנו בודקים את הנושא.', time: new Date().toLocaleString('he-IL')};
+              const mentorReply = { sender: 'other', name: t.teamMember, text: 'תודה על תגובתך, אנו בודקים את הנושא.', time: new Date().toLocaleString('he-IL')};
               updatedTicket = {...t, conversation: [...t.conversation, mentorReply]};
               return updatedTicket;
           }
@@ -387,7 +397,6 @@ export const api = {
       return true;
   },
 
-  // --- Cracker AI API ---
   async callCrackerApi(message, sessionId) {
     const API_KEY = "dgiSC68XSkSPq0fAa9lylhVO5wvI3Qs74tGAIO63K6SXgdeewlBN7rDeloJhLnxi4A7ICUfYsqK9ESRPdHJ38NuvCokWgOl8ZfjVs1jpBDAUMsHc92MluhJH06t2gXjn";
     const WEBHOOK_URL = "https://rockstarbizzzz.app.n8n.cloud/webhook/incoming-lovable";
@@ -408,30 +417,13 @@ export const api = {
   },
   
   // --- Admin Data ---
-  async getAdminCourses() {
-    await delay(300);
-    return mockAdminCourses;
-  },
-  async getAdminStudents() {
-    await delay(300);
-    return mockAdminStudents;
-  },
-  async getAdminTeamMembers() {
-    await delay(300);
-    return mockAdminTeamMembers;
-  },
-  async getAdminTickets() {
-    await delay(300);
-    return mockAdminTickets;
-  },
+  async getAdminCourses() { await delay(300); return mockAdminCourses; },
+  async getAdminStudents() { await delay(300); return mockAdminStudents; },
+  async getAdminTeamMembers() { await delay(300); return mockAdminTeamMembers; },
+  async getAdminTickets() { await delay(300); return mockAdminTickets; },
   async addCourse(courseData) {
       await delay(400);
-      const newCourse = {
-            id: `c${mockAdminCourses.length + 1}`,
-            cyclesData: [],
-            students: 0,
-            ...courseData,
-        };
+      const newCourse = { id: `c${mockAdminCourses.length + 1}`, cyclesData: [], students: 0, ...courseData, };
       mockAdminCourses = [newCourse, ...mockAdminCourses];
       return mockAdminCourses;
   },
@@ -453,77 +445,27 @@ export const api = {
   },
   async updateCycle(courseId, cycleId, updatedData) {
       await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => {
-            if (c.id === courseId) {
-                return { ...c, cyclesData: c.cyclesData.map(cy => cy.id === cycleId ? { ...cy, ...updatedData } : cy) };
-            }
-            return c;
-        });
+      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => cy.id === cycleId ? { ...cy, ...updatedData } : cy) } : c);
       return mockAdminCourses;
   },
   async addLesson(courseId, cycleId, lessonName) {
       await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => {
-            if (c.id === courseId) {
-                const updatedCycles = c.cyclesData.map(cy => {
-                    if (cy.id === cycleId) {
-                        const newLesson = { id: `l-${cycleId}-${cy.lessons.length + 1}`, title: lessonName, videoUrl: '', task: '', materials: [] };
-                        return { ...cy, lessons: [...cy.lessons, newLesson] };
-                    }
-                    return cy;
-                });
-                return { ...c, cyclesData: updatedCycles };
-            }
-            return c;
-        });
+      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: [...cy.lessons, { id: `l-${cycleId}-${cy.lessons.length + 1}`, title: lessonName, videoUrl: '', task: '', materials: [] }] } : cy) } : c);
       return mockAdminCourses;
   },
   async updateLessonTitle(courseId, cycleId, lessonId, newTitle) {
       await delay(200);
-      mockAdminCourses = mockAdminCourses.map(c => {
-            if (c.id === courseId) {
-                return { ...c, cyclesData: c.cyclesData.map(cy => {
-                        if (cy.id === cycleId) {
-                            return { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, title: newTitle } : l) }
-                        }
-                        return cy;
-                    })
-                }
-            }
-            return c;
-        });
+      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, title: newTitle } : l) } : cy) } : c);
       return mockAdminCourses;
   },
   async deleteLesson(courseId, cycleId, lessonId) {
        await delay(200);
-       mockAdminCourses = mockAdminCourses.map(c => {
-            if (c.id === courseId) {
-                return { ...c, cyclesData: c.cyclesData.map(cy => {
-                        if (cy.id === cycleId) {
-                            return { ...cy, lessons: cy.lessons.filter(l => l.id !== lessonId) }
-                        }
-                        return cy;
-                    })
-                }
-            }
-            return c;
-        });
+       mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.filter(l => l.id !== lessonId) } : cy) } : c);
        return mockAdminCourses;
   },
   async updateLesson(courseId, cycleId, lessonId, updatedLessonData) {
       await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => {
-            if (c.id === courseId) {
-                return { ...c, cyclesData: c.cyclesData.map(cy => {
-                        if (cy.id === cycleId) {
-                            return { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, ...updatedLessonData } : l) }
-                        }
-                        return cy;
-                    })
-                }
-            }
-            return c;
-        });
+      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, ...updatedLessonData } : l) } : cy) } : c);
       return mockAdminCourses;
   },
    async updateStudent(studentId, updatedData) {
@@ -533,40 +475,17 @@ export const api = {
     },
     async changeStudentCycle(studentId, courseId, newCycleId) {
         await delay(300);
-        mockAdminStudents = mockAdminStudents.map(s => {
-            if (s.id === studentId) {
-                const newEnrollments = s.enrollments.map(en => en.courseId === courseId ? { ...en, cycleId: newCycleId } : en);
-                return { ...s, enrollments: newEnrollments };
-            }
-            return s;
-        });
+        mockAdminStudents = mockAdminStudents.map(s => (s.id === studentId) ? { ...s, enrollments: s.enrollments.map(en => en.courseId === courseId ? { ...en, cycleId: newCycleId } : en) } : s);
         return mockAdminStudents;
     },
     async updateStudentEnrollment(studentId, courseId, newMentorId) {
         await delay(300);
-        mockAdminStudents = mockAdminStudents.map(s => {
-            if (s.id === studentId) {
-                const newEnrollments = s.enrollments.map(en => en.courseId === courseId ? { ...en, mentorId: newMentorId } : en);
-                return { ...s, enrollments: newEnrollments };
-            }
-            return s;
-        });
+        mockAdminStudents = mockAdminStudents.map(s => (s.id === studentId) ? { ...s, enrollments: s.enrollments.map(en => en.courseId === courseId ? { ...en, mentorId: newMentorId } : en) } : s);
         return mockAdminStudents;
     },
      async updateStudentEnrollmentDetails(studentId, courseId, cycleId, field, value) {
          await delay(100);
-         mockAdminStudents = mockAdminStudents.map(s => {
-            if (s.id === studentId) {
-                return { ...s, enrollments: s.enrollments.map(en => {
-                        if (en.courseId === courseId && en.cycleId === cycleId) {
-                            return { ...en, [field]: value };
-                        }
-                        return en;
-                    })
-                };
-            }
-            return s;
-        });
+         mockAdminStudents = mockAdminStudents.map(s => (s.id === studentId) ? { ...s, enrollments: s.enrollments.map(en => (en.courseId === courseId && en.cycleId === cycleId) ? { ...en, [field]: value } : en) } : s);
         return mockAdminStudents;
     },
     async addNewStudentToCycle(courseId, cycleId, studentData) {
@@ -586,8 +505,8 @@ export const api = {
         await delay(400);
         mockAdminTickets = mockAdminTickets.map(ticket => {
             if (ticket.id === ticketId) {
-                const newReply = { sender: 'you' as const, name: 'מנהל מערכת', text: replyText, time: new Date().toLocaleString('he-IL') };
-                return { ...ticket, conversation: [...ticket.conversation, newReply], lastUpdate: new Date().toLocaleDateString('he-IL'), status: 'פתוחה' as const };
+                const newReply = { sender: 'you', name: 'מנהל מערכת', text: replyText, time: new Date().toLocaleString('he-IL') };
+                return { ...ticket, conversation: [...ticket.conversation, newReply], lastUpdate: new Date().toLocaleDateString('he-IL'), status: 'פתוחה' };
             }
             return ticket;
         });

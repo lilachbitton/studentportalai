@@ -14,6 +14,7 @@ export interface StudentProfileData {
         company: string;
         bio: string;
     };
+    cycleName?: string;
 }
 
 interface StudentProfilePageProps {
@@ -72,6 +73,7 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({ profile,
         setIsSaving(true);
         try {
             const updatedProfile = {
+                ...profile,
                 personal: type === 'personal' ? personalDetails : profile.personal,
                 professional: type === 'professional' ? professionalDetails : profile.professional,
             };

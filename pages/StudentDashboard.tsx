@@ -181,14 +181,22 @@ const Header: React.FC<{
     profile?: StudentProfileData; 
     onGoToProfile: () => void;
     onLogout: () => void;
-}> = ({ isDark, profile, onGoToProfile, onLogout }) => {
+    unreadStatus: UnreadStatus;
+    onGoToTickets: () => void;
+    onGoToChat: () => void;
+}> = ({ isDark, profile, onGoToProfile, onLogout, unreadStatus, onGoToTickets, onGoToChat }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const notificationsRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsDropdownOpen(false);
+            }
+             if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+                setIsNotificationsOpen(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -207,6 +215,8 @@ const Header: React.FC<{
 
     if (!profile) return null; // Don't render header if profile is not loaded
 
+    const hasUnread = unreadStatus.tickets.length > 0 || unreadStatus.lessons.length > 0;
+
     return (
         <header className={`flex justify-between items-center p-5 transition-colors duration-300 ${headerClasses}`}>
             {/* Search */}
@@ -218,16 +228,47 @@ const Header: React.FC<{
             </div>
             {/* User Area */}
             <div className="flex items-center space-x-4">
-                <button className={`relative hover:text-orange-600 ${bellIconClasses}`}>
-                    <BellIcon />
-                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-orange-600 ring-2 ring-white"></span>
-                </button>
+                 <div className="relative" ref={notificationsRef}>
+                    <button onClick={() => setIsNotificationsOpen(prev => !prev)} className={`relative hover:text-orange-600 ${bellIconClasses}`}>
+                        <BellIcon />
+                        {hasUnread && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-orange-600 ring-2 ring-white"></span>}
+                    </button>
+                    {isNotificationsOpen && (
+                        <div className={`absolute left-0 mt-2 w-72 rounded-md shadow-lg py-2 z-20 ${isDark ? 'bg-[#243041] ring-1 ring-slate-700' : 'bg-white ring-1 ring-black ring-opacity-5'}`}>
+                           <div className={`px-4 py-2 text-sm font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>התראות</div>
+                           <div className="border-t my-1" style={{borderColor: isDark ? 'rgb(51 65 85)' : 'rgb(229 231 235)'}}></div>
+                            {unreadStatus.tickets.length > 0 && (
+                                <a href="#" onClick={(e) => { e.preventDefault(); onGoToTickets(); setIsNotificationsOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+                                    <TicketsIcon />
+                                    <div>
+                                        <p>יש לך {unreadStatus.tickets.length} פניות חדשות</p>
+                                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>לחץ לצפייה בפניות</p>
+                                    </div>
+                                </a>
+                            )}
+                             {unreadStatus.lessons.length > 0 && (
+                                <a href="#" onClick={(e) => { e.preventDefault(); onGoToChat(); setIsNotificationsOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+                                    <ChatIcon />
+                                     <div>
+                                        <p>יש לך {unreadStatus.lessons.length} הודעות חדשות מהמפצחת</p>
+                                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>לחץ למעבר לאזור הצ'אט</p>
+                                    </div>
+                                </a>
+                            )}
+                            {!hasUnread && (
+                                <div className={`px-4 py-3 text-sm text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                                    אין התראות חדשות
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
 
                 <div className="relative" ref={dropdownRef}>
                     <button onClick={() => setIsDropdownOpen(prev => !prev)} className="flex items-center space-x-2 pl-4 cursor-pointer">
                         <div className="text-right">
                             <div className={`font-bold ${userNameClasses}`}>{profile.personal.name}</div>
-                            <div className={`text-sm ${userRoleClasses}`}>מחזור 5</div>
+                            {profile.cycleName && <div className={`text-sm ${userRoleClasses}`}>{profile.cycleName}</div>}
                         </div>
                         <img src={profile.personal.imageUrl} alt="תמונת פרופיל" className="w-10 h-10 rounded-full"/>
                         <ChevronDownIcon />
@@ -717,6 +758,9 @@ export const StudentDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout 
                     profile={profile}
                     onGoToProfile={handleGoToProfile}
                     onLogout={onLogout}
+                    unreadStatus={unreadStatus}
+                    onGoToTickets={handleGoToTickets}
+                    onGoToChat={handleGoToChat}
                 />
                 <main className={`flex-1 overflow-x-hidden overflow-y-auto p-8 ${mainBgClass} transition-colors duration-300`}>
                     {renderContent()}

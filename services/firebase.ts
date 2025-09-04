@@ -1,5 +1,5 @@
-// Fix: Changed import to use firebase/compat/app to resolve the issue where initializeApp is not found as a named export.
-import firebase from "firebase/compat/app";
+// Fix: Use modular 'initializeApp' from 'firebase/app' to be consistent with other modular imports.
+import { initializeApp } from 'firebase/app';
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -16,8 +16,8 @@ const firebaseConfig = {
 
 
 // Initialize Firebase
-// Fix: Call initializeApp as a method on the default export from the compat library.
-const app = firebase.initializeApp(firebaseConfig);
+// Fix: Use modular 'initializeApp' function instead of the compat version.
+const app = initializeApp(firebaseConfig);
 
 // Export Firebase services
 export const auth = getAuth(app);

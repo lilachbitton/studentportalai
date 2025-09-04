@@ -262,7 +262,8 @@ export const api = {
     if (!user) {
         return {
             personal: { name: 'אורח', email: '', phone: '', imageUrl: '/default-avatar.png' },
-            professional: { title: '', company: '', bio: '' }
+            professional: { title: '', company: '', bio: '' },
+            cycleName: undefined
         };
     }
     
@@ -282,13 +283,15 @@ export const api = {
                 title: data.professional?.title || '',
                 company: data.professional?.company || '',
                 bio: data.professional?.bio || ''
-            }
+            },
+            cycleName: data.cycleName
         };
     } else {
         console.warn("User document not found in Firestore for UID:", user.uid);
         return {
             personal: { name: 'משתמש חדש', email: user.email, phone: '', imageUrl: '/default-avatar.png' },
-            professional: { title: '', company: '', bio: '' }
+            professional: { title: '', company: '', bio: '' },
+            cycleName: undefined
         };
     }
   },

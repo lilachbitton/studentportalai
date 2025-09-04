@@ -3,12 +3,18 @@
  * API Service
  * 
  * This file centralizes all communication with the backend.
- * Currently, it simulates API calls using mock data and setTimeout to mimic network latency.
- * When a real backend is ready, you only need to change the functions in this file
- * to use `fetch` to call the real API endpoints. The rest of the application
- * will continue to work without any changes.
+ * It now uses Firebase for authentication and will use Firestore for data.
  */
 import { v4 as uuidv4 } from 'uuid';
+import { auth, db } from './firebase';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  sendPasswordResetEmail,
+  signOut
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore"; 
+
 import type { Course, Lesson, StudentProfileData } from '../pages/StudentDashboard';
 import type { Ticket, ConversationMessage } from '../pages/TicketsPage';
 import type { AdminCourse, Cycle, AdminLesson, AdminTeamMember, StudentEnrollment } from '../pages/AdminCoursesPage';
@@ -136,32 +142,85 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 export const api = {
   // --- Authentication ---
   async login(email, password, rememberMe) {
-    await delay(500);
+    // Hardcoded admin login as requested
     if (email.toLowerCase() === 'admin' && password === 'admin') {
       return { success: true, role: 'admin' };
     }
-    // For any other login, assume student
-    if (password) { // Basic check
-      return { success: true, role: 'student' };
+    
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Fetch user role from Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        // Assuming role is stored in the document, default to 'student' if not found
+        return { success: true, role: userData.role || 'student' };
+      } else {
+        // This case might happen if user was created in Auth but not in Firestore
+        // For now, we'll treat them as a student.
+        console.warn("User document not found in Firestore for UID:", user.uid);
+        return { success: true, role: 'student' };
+      }
+    } catch (error) {
+      console.error("Firebase login error:", error.code);
+      let message = 'אירעה שגיאה. נסה שוב מאוחר יותר.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        message = 'שם משתמש או סיסמא שגויים.';
+      }
+      return { success: false, message };
     }
-    return { success: false, message: 'שם משתמש או סיסמא שגויים.' };
   },
 
   async register(userData) {
-    await delay(700);
-    console.log('Registering user:', userData);
-    // In a real backend, you'd check if email exists
-    return { success: true };
+    const { email, password, fullName, phone } = userData;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Now, save additional user data to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        fullName: fullName,
+        email: email,
+        phone: phone,
+        role: 'student' // Assign 'student' role upon registration
+      });
+
+      return { success: true };
+
+    } catch (error) {
+      console.error("Firebase registration error:", error.code);
+      let message = 'הרשמה נכשלה. נסה שוב מאוחר יותר.';
+      if (error.code === 'auth/email-already-in-use') {
+        message = 'כתובת המייל הזו כבר קיימת במערכת.';
+      } else if (error.code === 'auth/weak-password') {
+        message = 'הסיסמה חלשה מדי. אנא בחר סיסמה חזקה יותר.';
+      }
+      return { success: false, message };
+    }
   },
 
   async forgotPassword(email) {
-    await delay(500);
-    console.log(`Password reset for ${email}`);
-    return { success: true, message: 'אם קיים חשבון עם כתובת המייל, ישלח אליך קישור לאיפוס סיסמה.' };
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return { success: true, message: 'אם קיים חשבון עם כתובת המייל, ישלח אליך קישור לאיפוס סיסמה.' };
+    } catch (error) {
+       console.error("Firebase password reset error:", error.code);
+       // We return a generic success message for security reasons (to not reveal which emails are registered)
+       return { success: true, message: 'אם קיים חשבון עם כתובת המייל, ישלח אליך קישור לאיפוס סיסמה.' };
+    }
   },
   
-  logout() {
-    console.log('User logged out');
+  async logout() {
+    try {
+      await signOut(auth);
+      console.log('User logged out');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
   },
 
   // --- Student Data ---

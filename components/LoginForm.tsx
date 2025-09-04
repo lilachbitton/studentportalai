@@ -6,6 +6,20 @@ const Logo: React.FC = () => (
     <img src="/logo.png" alt="לוגו ביזנס אקספרס" className="w-48" />
 );
 
+const EyeIcon: React.FC = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+);
+
+const EyeSlashIcon: React.FC = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7 1.274-4.057 5.064 7 9.542 7 .847 0 1.67.111 2.458.317M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 2a9.954 9.954 0 01-1.666 3.333M3 3l18 18" />
+  </svg>
+);
+
+
 export const LoginForm: React.FC<{ 
   onNavigateToRegister: () => void; 
   onForgotPassword: () => void;
@@ -13,6 +27,7 @@ export const LoginForm: React.FC<{
 }> = ({ onNavigateToRegister, onForgotPassword, onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,17 +72,20 @@ export const LoginForm: React.FC<{
             aria-label="Email Address or Username"
           />
         </div>
-        <div>
+        <div className="relative">
           <input
-            type="password"
+            type={passwordVisible ? "text" : "password"}
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="סיסמא"
-            className="w-full p-3 bg-gray-100 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-right placeholder:text-gray-500"
+            className="w-full p-3 pl-10 bg-gray-100 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-right placeholder:text-gray-500"
             required
             aria-label="Password"
           />
+           <button type="button" onClick={() => setPasswordVisible(!passwordVisible)} className="absolute inset-y-0 left-0 pl-3 flex items-center" aria-label="Show password">
+              {passwordVisible ? <EyeSlashIcon/> : <EyeIcon/>}
+            </button>
         </div>
         
         {error && <p className="text-red-400 text-sm text-center">{error}</p>}

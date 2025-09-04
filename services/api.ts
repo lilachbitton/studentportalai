@@ -234,22 +234,78 @@ export const api = {
   // --- Student Data ---
   async getCourses() {
     await delay(300);
-    return mockCourses;
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    const userDocRef = doc(db, "users", user.uid);
+    const userDocSnap = await getDoc(userDocRef);
+    
+    // A newly registered user won't have an 'enrollments' field until an admin adds them.
+    if (userDocSnap.exists() && userDocSnap.data().enrollments?.length > 0) {
+        // This user is enrolled in courses. For now, we return all mock courses.
+        // A real implementation would fetch specific courses based on enrollment IDs.
+        return mockCourses;
+    }
+
+    // New user with no enrollments gets an empty course list.
+    return [];
   },
 
   async getTickets() {
     await delay(300);
-    return mockTickets;
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    // A newly registered user has no tickets.
+    // A real app would query Firestore: `collection('tickets').where('userId', '==', user.uid)`
+    return [];
   },
 
   async getStudentProfile() {
     await delay(300);
-    return mockProfile;
+    const user = auth.currentUser;
+    if (!user) {
+        // Return a default empty profile if no user is logged in
+        return {
+            personal: { name: 'אורח', email: '', phone: '', imageUrl: 'https://i.pravatar.cc/150' },
+            professional: { title: '', company: '', bio: '' }
+        };
+    }
+    
+    const userDocRef = doc(db, "users", user.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        return {
+            personal: {
+                name: userData.fullName || 'שם לא זמין',
+                email: userData.email || user.email,
+                phone: userData.phone || '',
+                // Use a consistent avatar for each user based on their email
+                imageUrl: `https://i.pravatar.cc/150?u=${user.email}` 
+            },
+            professional: {
+                // Return empty professional details if they don't exist yet
+                title: userData.professional?.title || '',
+                company: userData.professional?.company || '',
+                bio: userData.professional?.bio || ''
+            }
+        };
+    } else {
+        // Fallback if firestore doc is missing for some reason
+        console.warn("User document not found in Firestore for UID:", user.uid);
+        return {
+            personal: { name: user.displayName || 'משתמש חדש', email: user.email, phone: '', imageUrl: `https://i.pravatar.cc/150?u=${user.email}` },
+            professional: { title: '', company: '', bio: '' }
+        };
+    }
   },
   
   async getUnreadStatus() {
       await delay(100);
-      return mockUnreadStatus;
+      // New users should have no unread items.
+      return { tickets: [], lessons: [] };
   },
   
   async updateProfile(newProfileData) {

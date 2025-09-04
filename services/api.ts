@@ -255,12 +255,30 @@ export const api = {
     await delay(300);
     const user = auth.currentUser;
     if (!user) return [];
-
-    // A newly registered user has no tickets.
-    // A real app would query Firestore: `collection('tickets').where('userId', '==', user.uid)`
     return [];
   },
 
+  async getTasks() {
+    await delay(300);
+    const user = auth.currentUser;
+    if (!user) return [];
+    return [];
+  },
+  
+  async getSchedule() {
+    await delay(300);
+    const user = auth.currentUser;
+    if (!user) return [];
+    return [];
+  },
+
+  async getKeyUpdates() {
+    await delay(300);
+    const user = auth.currentUser;
+    if (!user) return [];
+    return [];
+  },
+  
   async getStudentProfile() {
     await delay(300);
     const user = auth.currentUser;
@@ -304,7 +322,6 @@ export const api = {
   
   async getUnreadStatus() {
       await delay(100);
-      // New users should have no unread items.
       return { tickets: [], lessons: [] };
   },
   
@@ -319,12 +336,10 @@ export const api = {
       const newTicket = {
             id: `TKT-${String(mockTickets.length + 1).padStart(3, '0')}`,
             lastUpdate: new Date().toLocaleDateString('he-IL'),
-            // Fix: Use 'as const' to ensure TypeScript infers the literal type 'פתוחה', not the general type 'string'.
             status: 'פתוחה' as const,
             subject: ticketData.subject,
             teamMember: ticketData.teamMember,
             conversation: [{
-                // Fix: Use 'as const' for the sender to match the ConversationMessage type.
                 sender: 'you' as const,
                 name: studentName,
                 text: ticketData.message,

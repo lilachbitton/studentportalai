@@ -192,12 +192,20 @@ export const api = {
       return { success: true };
 
     } catch (error) {
-      console.error("Firebase registration error:", error.code);
+      console.error("Firebase registration error:", error);
       let message = 'הרשמה נכשלה. נסה שוב מאוחר יותר.';
-      if (error.code === 'auth/email-already-in-use') {
-        message = 'כתובת המייל הזו כבר קיימת במערכת.';
-      } else if (error.code === 'auth/weak-password') {
-        message = 'הסיסמה חלשה מדי. אנא בחר סיסמה חזקה יותר.';
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          message = 'כתובת המייל הזו כבר קיימת במערכת.';
+          break;
+        case 'auth/weak-password':
+          message = 'הסיסמה חלשה מדי. אנא בחר סיסמה חזקה יותר (לפחות 6 תווים).';
+          break;
+        case 'auth/invalid-email':
+          message = 'כתובת המייל שהוזנה אינה תקינה.';
+          break;
+        default:
+          message = 'אירעה שגיאה בלתי צפויה. אנא נסה שוב.';
       }
       return { success: false, message };
     }

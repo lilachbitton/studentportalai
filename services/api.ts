@@ -6,10 +6,7 @@
  * It now uses Firebase for authentication and will use Firestore for data.
  */
 import { v4 as uuidv4 } from 'uuid';
-// Firebase v9+ modular imports
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+// Fix: The project uses Firebase v8, so v9 modular imports are not needed.
 import { auth, db, storage } from './firebase';
 
 import type { Course, Lesson, StudentProfileData } from '../pages/StudentDashboard';
@@ -139,13 +136,15 @@ export const api = {
     }
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Fix: Use Firebase v8 auth method.
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
-      const userDocRef = doc(db, "users", user.uid);
-      const userDocSnap = await getDoc(userDocRef);
+      // Fix: Use Firebase v8 Firestore methods.
+      const userDocRef = db.collection("users").doc(user.uid);
+      const userDocSnap = await userDocRef.get();
 
-      if (userDocSnap.exists()) {
+      if (userDocSnap.exists) {
         const userData = userDocSnap.data();
         return { success: true, role: userData.role || 'student' };
       } else {
@@ -165,10 +164,12 @@ export const api = {
   async register(userData) {
     const { email, password, fullName, phone } = userData;
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Fix: Use Firebase v8 auth method.
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
-      await setDoc(doc(db, "users", user.uid), {
+      // Fix: Use Firebase v8 Firestore method.
+      await db.collection("users").doc(user.uid).set({
         fullName: fullName,
         email: email,
         phone: phone,
@@ -201,7 +202,8 @@ export const api = {
 
   async forgotPassword(email) {
     try {
-      await sendPasswordResetEmail(auth, email);
+      // Fix: Use Firebase v8 auth method.
+      await auth.sendPasswordResetEmail(email);
       return { success: true, message: 'אם קיים חשבון עם כתובת המייל, ישלח אליך קישור לאיפוס סיסמה.' };
     } catch (error) {
        console.error("Firebase password reset error:", error.code);
@@ -211,7 +213,8 @@ export const api = {
   
   async logout() {
     try {
-      await signOut(auth);
+      // Fix: Use Firebase v8 auth method.
+      await auth.signOut();
       console.log('User logged out');
     } catch (error) {
       console.error("Error signing out: ", error);
@@ -261,10 +264,11 @@ export const api = {
         };
     }
     
-    const userDocRef = doc(db, "users", user.uid);
-    const userDocSnap = await getDoc(userDocRef);
+    // Fix: Use Firebase v8 Firestore methods.
+    const userDocRef = db.collection("users").doc(user.uid);
+    const userDocSnap = await userDocRef.get();
 
-    if (userDocSnap.exists()) {
+    if (userDocSnap.exists) {
         const data = userDocSnap.data();
         return {
             personal: {
@@ -299,9 +303,10 @@ export const api = {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    const userDocRef = doc(db, "users", user.uid);
+    // Fix: Use Firebase v8 Firestore method.
+    const userDocRef = db.collection("users").doc(user.uid);
     try {
-        await updateDoc(userDocRef, {
+        await userDocRef.update({
             personal: newProfileData.personal,
             professional: newProfileData.professional,
             fullName: newProfileData.personal.name, 
@@ -319,16 +324,17 @@ export const api = {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+    // Fix: Use Firebase v8 Storage methods.
+    const storageRef = storage.ref(`profile-pictures/${user.uid}`);
     try {
-      // Pass the file object directly to uploadBytes. 
-      // The SDK is optimized to handle File/Blob objects efficiently.
-      await uploadBytes(storageRef, file);
+      // Pass the file object directly to put.
+      await storageRef.put(file);
       
-      const downloadURL = await getDownloadURL(storageRef);
+      const downloadURL = await storageRef.getDownloadURL();
       
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
+      // Fix: Use Firebase v8 Firestore methods.
+      const userDocRef = db.collection("users").doc(user.uid);
+      await userDocRef.update({
           "personal.imageUrl": downloadURL
       });
       
@@ -463,7 +469,7 @@ export const api = {
   },
   async updateLesson(courseId, cycleId, lessonId, updatedLessonData) {
       await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, ...updatedLessonData } : l) } : cy) } : c);
+      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, ...updatedLessonData } : l) } : c) } : c);
       return mockAdminCourses;
   },
    async updateStudent(studentId, updatedData) {

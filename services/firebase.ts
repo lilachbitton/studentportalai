@@ -1,10 +1,10 @@
 
 
-// Fix: Corrected Firebase imports to use named imports as required by the Firebase v9 modular SDK.
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+// Fix: Corrected Firebase imports to use the v8 namespaced syntax, which appears to be required by the project's dependencies.
+import firebase from 'firebase/app';
+import 'firebase/auth';
+import 'firebase/firestore';
+import 'firebase/storage';
 
 // Your web app's Firebase configuration, corrected based on user's provided config.
 const firebaseConfig = {
@@ -18,9 +18,11 @@ const firebaseConfig = {
 
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 
 // Export Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+export const auth = firebase.auth();
+export const db = firebase.firestore();
+export const storage = firebase.storage();

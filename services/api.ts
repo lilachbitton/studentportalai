@@ -321,20 +321,68 @@ export const api = {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    const storageRef = storage.ref(`profile-pictures/${user.uid}`);
+    // בדיקת סוג הקובץ
+    if (!file.type.startsWith('image/')) {
+      throw new Error('הקובץ חייב להיות תמונה');
+    }
+    
+    // בדיקת גודל הקובץ (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('התמונה גדולה מדי (מקסימום 5MB)');
+    }
+
+    console.log('Starting image upload for user:', user.uid);
+    console.log('File details:', { name: file.name, size: file.size, type: file.type });
+    
+    // יצירת שם קובץ יחודי
+    const timestamp = Date.now();
+    const fileExtension = file.name.split('.').pop() || 'jpg';
+    const fileName = `${timestamp}.${fileExtension}`;
+    
+    const storageRef = storage.ref(`profile-pictures/${user.uid}/${fileName}`);
+    
     try {
-      await storageRef.put(file);
+      console.log('Uploading to path:', `profile-pictures/${user.uid}/${fileName}`);
       
+      // העלאת הקובץ עם metadata
+      const uploadTask = storageRef.put(file, {
+        contentType: file.type,
+        customMetadata: {
+          'uploadedBy': user.uid,
+          'uploadedAt': new Date().toISOString()
+        }
+      });
+      
+      // המתנה להשלמת ההעלאה
+      await uploadTask;
+      console.log('File uploaded successfully');
+      
+      // קבלת URL להורדה
       const downloadURL = await storageRef.getDownloadURL();
+      console.log('Download URL obtained:', downloadURL);
       
+      // עדכון המסד נתונים
       const userDocRef = db.collection("users").doc(user.uid);
       await userDocRef.update({
           "personal.imageUrl": downloadURL
       });
+      console.log('Database updated successfully');
       
       return downloadURL;
     } catch (error) {
       console.error("Error uploading profile image:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      
+      // הודעות שגיאה ברורות יותר
+      if (error.code === 'storage/unauthorized') {
+        throw new Error('אין הרשאה להעלות קבצים. בדוק את כללי Firebase Storage.');
+      } else if (error.code === 'storage/canceled') {
+        throw new Error('העלאת הקובץ בוטלה.');
+      } else if (error.code === 'storage/unknown') {
+        throw new Error('שגיאה לא ידועה בהעלאת הקובץ.');
+      }
+      
       throw error;
     }
   },

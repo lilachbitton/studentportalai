@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CameraIcon } from '../components/Icons';
+import { api } from '../services/api';
 
 export interface StudentProfileData {
     personal: {
@@ -13,6 +14,7 @@ export interface StudentProfileData {
         company: string;
         bio: string;
     };
+    cycleName?: string;
 }
 
 interface StudentProfilePageProps {
@@ -55,18 +57,56 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({ profile,
     const [professionalDetails, setProfessionalDetails] = useState(profile.professional);
     const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
     const [passwordError, setPasswordError] = useState('');
+    const [feedback, setFeedback] = useState({ message: '', type: '' });
+    const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
-    const handlePersonalSave = (e: React.FormEvent) => {
-        e.preventDefault();
-        onUpdateProfile({ ...profile, personal: personalDetails });
-        // Add success message
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const showFeedback = (message: string, type: 'success' | 'error') => {
+        setFeedback({ message, type });
+        setTimeout(() => setFeedback({ message: '', type: '' }), 3000);
     };
 
-    const handleProfessionalSave = (e: React.FormEvent) => {
+    const handleFormSave = async (e: React.FormEvent, type: 'personal' | 'professional') => {
         e.preventDefault();
-        onUpdateProfile({ ...profile, professional: professionalDetails });
-        // Add success message
+        setIsSaving(true);
+        try {
+            const updatedProfile = {
+                ...profile,
+                personal: type === 'personal' ? personalDetails : profile.personal,
+                professional: type === 'professional' ? professionalDetails : profile.professional,
+            };
+            await api.updateProfile(updatedProfile);
+            onUpdateProfile(updatedProfile); // Update parent state
+            showFeedback('הפרטים נשמרו בהצלחה!', 'success');
+        } catch (error) {
+            console.error('Failed to save profile:', error);
+            showFeedback('שגיאה בשמירת הפרטים.', 'error');
+        } finally {
+            setIsSaving(false);
+        }
     };
+    
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const newImageUrl = await api.uploadProfileImage(file);
+            const updatedPersonalDetails = { ...personalDetails, imageUrl: newImageUrl };
+            setPersonalDetails(updatedPersonalDetails);
+            onUpdateProfile({ ...profile, personal: updatedPersonalDetails });
+            showFeedback('תמונת הפרופיל עודכנה!', 'success');
+        } catch (error) {
+            console.error('Failed to upload image:', error);
+            showFeedback('שגיאה בהעלאת התמונה.', 'error');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
 
     const handlePasswordChange = (e: React.FormEvent) => {
         e.preventDefault();
@@ -82,28 +122,32 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({ profile,
         // Logic to change password
         console.log("Changing password...");
         setPasswords({ current: '', new: '', confirm: '' });
-        // Add success message
+        showFeedback('הסיסמה שונתה בהצלחה', 'success');
     };
 
     const renderTabContent = () => {
         switch(activeTab) {
             case 'personal': return (
-                <form onSubmit={handlePersonalSave} className="space-y-4">
+                <form onSubmit={(e) => handleFormSave(e, 'personal')} className="space-y-4">
                     <FormInput label="שם מלא" id="name" type="text" value={personalDetails.name} onChange={e => setPersonalDetails({...personalDetails, name: e.target.value})} />
-                    <FormInput label='כתובת דוא"ל' id="email" type="email" value={personalDetails.email} onChange={e => setPersonalDetails({...personalDetails, email: e.target.value})} />
+                    <FormInput label='כתובת דוא"ל' id="email" type="email" value={personalDetails.email} onChange={e => setPersonalDetails({...personalDetails, email: e.target.value})} disabled />
                     <FormInput label="מספר טלפון" id="phone" type="tel" value={personalDetails.phone} onChange={e => setPersonalDetails({...personalDetails, phone: e.target.value})} />
                     <div className="flex justify-end pt-4">
-                        <button type="submit" className="px-5 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 font-bold transition-colors">שמור שינויים</button>
+                        <button type="submit" disabled={isSaving} className="px-5 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 font-bold transition-colors disabled:bg-gray-500">
+                            {isSaving ? 'שומר...' : 'שמור שינויים'}
+                        </button>
                     </div>
                 </form>
             );
             case 'professional': return (
-                 <form onSubmit={handleProfessionalSave} className="space-y-4">
+                 <form onSubmit={(e) => handleFormSave(e, 'professional')} className="space-y-4">
                     <FormInput label="תפקיד" id="title" type="text" value={professionalDetails.title} onChange={e => setProfessionalDetails({...professionalDetails, title: e.target.value})} />
                     <FormInput label="חברה/עסק" id="company" type="text" value={professionalDetails.company} onChange={e => setProfessionalDetails({...professionalDetails, company: e.target.value})} />
                     <FormTextarea label="ביו קצר" id="bio" rows={4} value={professionalDetails.bio} onChange={e => setProfessionalDetails({...professionalDetails, bio: e.target.value})} />
                     <div className="flex justify-end pt-4">
-                        <button type="submit" className="px-5 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 font-bold transition-colors">שמור שינויים</button>
+                         <button type="submit" disabled={isSaving} className="px-5 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 font-bold transition-colors disabled:bg-gray-500">
+                            {isSaving ? 'שומר...' : 'שמור שינויים'}
+                        </button>
                     </div>
                 </form>
             );
@@ -123,7 +167,12 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({ profile,
     };
     
     return (
-        <div className="text-white max-w-4xl mx-auto">
+        <div className="text-white max-w-4xl mx-auto relative">
+             {feedback.message && (
+                <div className={`absolute -top-4 right-0 font-bold px-6 py-2 rounded-lg shadow-lg z-50 ${feedback.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                    {feedback.message}
+                </div>
+            )}
             <h1 className="text-5xl font-extrabold mb-8 text-center">הפרופיל שלי</h1>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Left side: Profile picture */}
@@ -131,8 +180,19 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({ profile,
                     <div className="bg-[#243041] p-6 rounded-2xl shadow-lg flex flex-col items-center">
                         <div className="relative mb-4">
                             <img src={personalDetails.imageUrl} alt="תמונת פרופיל" className="w-40 h-40 rounded-full object-cover ring-4 ring-slate-600"/>
-                            <button className="absolute bottom-2 right-2 bg-orange-600 hover:bg-orange-700 p-3 rounded-full transition-transform hover:scale-110">
-                                <CameraIcon />
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleImageUpload}
+                                accept="image/*"
+                                className="hidden"
+                            />
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="absolute bottom-2 right-2 bg-orange-600 hover:bg-orange-700 p-3 rounded-full transition-transform hover:scale-110 disabled:bg-gray-500"
+                            >
+                                {isUploading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <CameraIcon />}
                                 <span className="sr-only">שנה תמונה</span>
                             </button>
                         </div>

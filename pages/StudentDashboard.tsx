@@ -55,6 +55,11 @@ export interface Course {
     };
     lessons: Omit<Lesson, 'courseId'>[];
 }
+// Custom types for dashboard widgets to avoid conflicts
+export interface DashboardTask { title: string; course: string; status: 'חדש' | 'ממתין למשוב' | 'יש משוב' | 'הושלם'; }
+export interface DashboardScheduleItem { date: string; time: string; title: string; teacher: string; type: 'group' | 'personal' | 'bonus'; }
+export interface DashboardUpdate { type: 'bonus' | 'schedule'; title: string; content: string; }
+
 
 const getLessonsWithCourseId = (courses: Course[]): Lesson[] => {
     const allLessons: Lesson[] = [];
@@ -176,14 +181,22 @@ const Header: React.FC<{
     profile?: StudentProfileData; 
     onGoToProfile: () => void;
     onLogout: () => void;
-}> = ({ isDark, profile, onGoToProfile, onLogout }) => {
+    unreadStatus: UnreadStatus;
+    onGoToTickets: () => void;
+    onGoToChat: () => void;
+}> = ({ isDark, profile, onGoToProfile, onLogout, unreadStatus, onGoToTickets, onGoToChat }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const notificationsRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsDropdownOpen(false);
+            }
+             if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+                setIsNotificationsOpen(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -202,6 +215,8 @@ const Header: React.FC<{
 
     if (!profile) return null; // Don't render header if profile is not loaded
 
+    const hasUnread = unreadStatus.tickets.length > 0 || unreadStatus.lessons.length > 0;
+
     return (
         <header className={`flex justify-between items-center p-5 transition-colors duration-300 ${headerClasses}`}>
             {/* Search */}
@@ -213,16 +228,47 @@ const Header: React.FC<{
             </div>
             {/* User Area */}
             <div className="flex items-center space-x-4">
-                <button className={`relative hover:text-orange-600 ${bellIconClasses}`}>
-                    <BellIcon />
-                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-orange-600 ring-2 ring-white"></span>
-                </button>
+                 <div className="relative" ref={notificationsRef}>
+                    <button onClick={() => setIsNotificationsOpen(prev => !prev)} className={`relative hover:text-orange-600 ${bellIconClasses}`}>
+                        <BellIcon />
+                        {hasUnread && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-orange-600 ring-2 ring-white"></span>}
+                    </button>
+                    {isNotificationsOpen && (
+                        <div className={`absolute left-0 mt-2 w-72 rounded-md shadow-lg py-2 z-20 ${isDark ? 'bg-[#243041] ring-1 ring-slate-700' : 'bg-white ring-1 ring-black ring-opacity-5'}`}>
+                           <div className={`px-4 py-2 text-sm font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>התראות</div>
+                           <div className="border-t my-1" style={{borderColor: isDark ? 'rgb(51 65 85)' : 'rgb(229 231 235)'}}></div>
+                            {unreadStatus.tickets.length > 0 && (
+                                <a href="#" onClick={(e) => { e.preventDefault(); onGoToTickets(); setIsNotificationsOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+                                    <TicketsIcon />
+                                    <div>
+                                        <p>יש לך {unreadStatus.tickets.length} פניות חדשות</p>
+                                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>לחץ לצפייה בפניות</p>
+                                    </div>
+                                </a>
+                            )}
+                             {unreadStatus.lessons.length > 0 && (
+                                <a href="#" onClick={(e) => { e.preventDefault(); onGoToChat(); setIsNotificationsOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+                                    <ChatIcon />
+                                     <div>
+                                        <p>יש לך {unreadStatus.lessons.length} הודעות חדשות מהמפצחת</p>
+                                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>לחץ למעבר לאזור הצ'אט</p>
+                                    </div>
+                                </a>
+                            )}
+                            {!hasUnread && (
+                                <div className={`px-4 py-3 text-sm text-center ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                                    אין התראות חדשות
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
 
                 <div className="relative" ref={dropdownRef}>
                     <button onClick={() => setIsDropdownOpen(prev => !prev)} className="flex items-center space-x-2 pl-4 cursor-pointer">
                         <div className="text-right">
                             <div className={`font-bold ${userNameClasses}`}>{profile.personal.name}</div>
-                            <div className={`text-sm ${userRoleClasses}`}>מחזור 5</div>
+                            {profile.cycleName && <div className={`text-sm ${userRoleClasses}`}>{profile.cycleName}</div>}
                         </div>
                         <img src={profile.personal.imageUrl} alt="תמונת פרופיל" className="w-10 h-10 rounded-full"/>
                         <ChevronDownIcon />
@@ -310,30 +356,34 @@ const SectionHeader: React.FC<{ title: string; children?: React.ReactNode }> = (
 
 
 // --- DASHBOARD HOME WIDGETS ---
-const KeyUpdates: React.FC = () => (
-    <div className="mb-8">
-        <SectionHeader title="עדכונים חשובים" children={null}/>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-orange-100 border-r-4 border-orange-500 p-5 rounded-lg">
-                <h4 className="font-bold text-lg text-orange-800">מפגש בונוס בנושא שיווק</h4>
-                <p className="text-gray-700 mt-1">ביום רביעי הקרוב, 10.09, תתקיים סדנת בונוס בזום בנושא שיווק דיגיטלי מתקדם. לינק ישלח בקרוב.</p>
-            </div>
-            <div className="bg-blue-100 border-r-4 border-blue-500 p-5 rounded-lg">
-                <h4 className="font-bold text-lg text-blue-800">שינוי במערכת השעות</h4>
-                <p className="text-gray-700 mt-1">לתשומת לבכם, השיעור הקרוב של יום שני נדחה באופן חד פעמי לשעה 19:00.</p>
-            </div>
+const KeyUpdates: React.FC<{ updates: DashboardUpdate[] }> = ({ updates }) => {
+    const updateStyles = {
+        bonus: { bg: 'bg-orange-100', border: 'border-orange-500', titleColor: 'text-orange-800' },
+        schedule: { bg: 'bg-blue-100', border: 'border-blue-500', titleColor: 'text-blue-800' },
+    };
+    return (
+        <div className="mb-8">
+            <SectionHeader title="עדכונים חשובים" children={null}/>
+            {updates.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {updates.map((update, i) => (
+                        <div key={i} className={`${updateStyles[update.type].bg} border-r-4 ${updateStyles[update.type].border} p-5 rounded-lg`}>
+                            <h4 className={`font-bold text-lg ${updateStyles[update.type].titleColor}`}>{update.title}</h4>
+                            <p className="text-gray-700 mt-1">{update.content}</p>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-8 bg-slate-50 rounded-lg">
+                    <p className="text-gray-500">אין עדכונים חשובים כרגע.</p>
+                </div>
+            )}
         </div>
-    </div>
-);
+    );
+};
 
-const TasksWidget: React.FC = () => {
+const TasksWidget: React.FC<{ tasks: DashboardTask[] }> = ({ tasks }) => {
     const [filter, setFilter] = useState('הכל');
-    const tasks = [
-        { title: 'סיכום שיעור 1: בניית אוואטר', course: 'שיווק דיגיטלי', status: 'הושלם' },
-        { title: 'הכנת פוסט לפייסבוק', course: 'ניהול מדיה חברתית', status: 'יש משוב' },
-        { title: 'מחקר מילות מפתח', course: 'שיווק דיגיטלי', status: 'ממתין למשוב'},
-        { title: 'בניית דף נחיתה ראשוני', course: 'בניית אתרים', status: 'חדש' },
-    ];
     const filters = ['הכל', 'חדש', 'ממתין למשוב', 'יש משוב', 'הושלם'];
     const filteredTasks = tasks.filter(t => filter === 'הכל' || t.status === filter);
     
@@ -355,26 +405,31 @@ const TasksWidget: React.FC = () => {
                 ))}
             </div>
             <div className="space-y-4 pr-2 max-h-96 overflow-y-auto">
-                {filteredTasks.map((task, i) => (
-                    <div key={i} className="p-3 rounded-lg hover:bg-slate-50">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h4 className="font-bold text-gray-800">{task.title}</h4>
-                                <p className="text-sm text-gray-500">{task.course}</p>
+                {tasks.length > 0 && filteredTasks.length > 0 ? (
+                    filteredTasks.map((task, i) => (
+                        <div key={i} className="p-3 rounded-lg hover:bg-slate-50">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h4 className="font-bold text-gray-800">{task.title}</h4>
+                                    <p className="text-sm text-gray-500">{task.course}</p>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusStyles[task.status]}`}>
+                                    {task.status}
+                                </span>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusStyles[task.status]}`}>
-                                {task.status}
-                            </span>
                         </div>
+                    ))
+                ) : (
+                     <div className="text-center py-10">
+                        <p className="text-gray-500">{tasks.length === 0 ? "אין לך משימות כרגע." : "לא נמצאו משימות בסינון זה."}</p>
                     </div>
-                ))}
+                )}
             </div>
         </div>
     );
 };
 
-const ScheduleWidget: React.FC = () => {
-    const schedule = [{ date: '2024-09-04', time: '10:00', title: 'שיעור שבועי', teacher: 'עם רועי', type: 'group' }, { date: '2024-09-04', time: '14:00', title: 'פגישה אישית', teacher: 'עם המלווה דניאל', type: 'personal' }, { date: '2024-09-05', time: '18:00', title: 'שיעור בונוס', teacher: 'שיווק מתקדם', type: 'bonus' }];
+const ScheduleWidget: React.FC<{ schedule: DashboardScheduleItem[] }> = ({ schedule }) => {
     const typeStyles: { [key: string]: string } = { group: 'border-orange-500', personal: 'border-blue-500', bonus: 'border-green-500' };
     const today = new Date();
     const scheduleDateString = today.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -383,7 +438,23 @@ const ScheduleWidget: React.FC = () => {
             <SectionHeader title="הלו״ז שלי">
                 <button className="text-sm font-semibold text-gray-700 bg-slate-100 hover:bg-slate-200 rounded-lg px-4 py-2 flex items-center">{scheduleDateString}</button>
             </SectionHeader>
-            <div className="space-y-4">{schedule.map((item, i) => (<div key={i} className={`flex items-center p-3 rounded-lg border-r-4 ${typeStyles[item.type]}`}><div className="flex-1 text-right mr-4"><h4 className="font-semibold text-gray-900">{item.title}</h4><p className="text-sm text-gray-500">{item.teacher} &middot; {new Date(item.date).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit', year: 'numeric'})}</p></div><div className="font-bold text-lg text-gray-700">{item.time}</div></div>))}</div>
+            <div className="space-y-4">
+                {schedule.length > 0 ? (
+                    schedule.map((item, i) => (
+                        <div key={i} className={`flex items-center p-3 rounded-lg border-r-4 ${typeStyles[item.type]}`}>
+                            <div className="flex-1 text-right mr-4">
+                                <h4 className="font-semibold text-gray-900">{item.title}</h4>
+                                <p className="text-sm text-gray-500">{item.teacher} &middot; {new Date(item.date).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit', year: 'numeric'})}</p>
+                            </div>
+                            <div className="font-bold text-lg text-gray-700">{item.time}</div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-center py-16">
+                        <p className="text-gray-500">אין פריטים בלו"ז להיום.</p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -398,13 +469,20 @@ const CourseCard: React.FC<{ title: string; icon: React.ReactNode; onClick?: () 
     </div>
 );
 
-const DashboardHome: React.FC<{ courses: Course[]; onSelectLesson: (lessonId: string) => void; studentName?: string }> = ({ courses, onSelectLesson, studentName }) => (
+const DashboardHome: React.FC<{ 
+    courses: Course[];
+    tasks: DashboardTask[];
+    schedule: DashboardScheduleItem[];
+    updates: DashboardUpdate[];
+    onSelectLesson: (lessonId: string) => void; 
+    studentName?: string;
+}> = ({ courses, tasks, schedule, updates, onSelectLesson, studentName }) => (
     <>
         <WelcomeBanner name={studentName} />
-        <KeyUpdates />
+        <KeyUpdates updates={updates} />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-                <TasksWidget />
+                <TasksWidget tasks={tasks}/>
                 <div>
                     <SectionHeader title="הקורסים שלי" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -420,7 +498,7 @@ const DashboardHome: React.FC<{ courses: Course[]; onSelectLesson: (lessonId: st
                 </div>
             </div>
             <div className="lg:col-span-1">
-                <ScheduleWidget />
+                <ScheduleWidget schedule={schedule} />
             </div>
         </div>
     </>
@@ -433,6 +511,9 @@ export const StudentDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout 
     const [courses, setCourses] = useState<Course[]>([]);
     const [allLessons, setAllLessons] = useState<Lesson[]>([]);
     const [tickets, setTickets] = useState<Ticket[]>([]);
+    const [tasks, setTasks] = useState<DashboardTask[]>([]);
+    const [schedule, setSchedule] = useState<DashboardScheduleItem[]>([]);
+    const [keyUpdates, setKeyUpdates] = useState<DashboardUpdate[]>([]);
     const [profile, setProfile] = useState<StudentProfileData | undefined>();
     const [unreadStatus, setUnreadStatus] = useState<UnreadStatus>({ tickets: [], lessons: [] });
     const [aiChatSessions, setAiChatSessions] = useState<{ [lessonId: string]: AiChatSession }>({});
@@ -442,17 +523,23 @@ export const StudentDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout 
         const loadInitialData = async () => {
             try {
                 setIsLoading(true);
-                const [coursesData, ticketsData, profileData, unreadData] = await Promise.all([
+                const [coursesData, ticketsData, profileData, unreadData, tasksData, scheduleData, updatesData] = await Promise.all([
                     api.getCourses(),
                     api.getTickets(),
                     api.getStudentProfile(),
                     api.getUnreadStatus(),
+                    api.getTasks(),
+                    api.getSchedule(),
+                    api.getKeyUpdates(),
                 ]);
                 setCourses(coursesData);
                 setAllLessons(getLessonsWithCourseId(coursesData));
                 setTickets(ticketsData);
                 setProfile(profileData);
                 setUnreadStatus(unreadData);
+                setTasks(tasksData);
+                setSchedule(scheduleData);
+                setKeyUpdates(updatesData);
             } catch (error) {
                 console.error("Failed to load dashboard data:", error);
             } finally {
@@ -567,6 +654,7 @@ export const StudentDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout 
             };
             setAiChatSessions(prev => ({
                  ...prev,
+// Fix: Changed 'lesson.id' to 'lessonId' to resolve reference error.
                  [lessonId]: { ...prev[lessonId], messages: [...prev[lessonId].messages, errorResponse], isThinking: false }
             }));
         }
@@ -628,7 +716,7 @@ export const StudentDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout 
         }
         
         switch (view) {
-            case 'dashboard': return <DashboardHome courses={courses} onSelectLesson={handleSelectLesson} studentName={profile?.personal.name} />;
+            case 'dashboard': return <DashboardHome courses={courses} tasks={tasks} schedule={schedule} updates={keyUpdates} onSelectLesson={handleSelectLesson} studentName={profile?.personal.name} />;
             case 'calendar': return <CalendarPage />;
             case 'team': return <TeamPage onNewTicket={handleNewTicket} onGoToTickets={handleGoToTickets} />;
             case 'tickets': return <TicketsPage tickets={tickets} onReply={handleReplyToTicket} onNewTicket={handleNewTicket} unreadTickets={unreadStatus.tickets} onMarkAsRead={(id) => markAsRead('tickets', id)} />;
@@ -641,7 +729,7 @@ export const StudentDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout 
                                     onMarkAsRead={(id) => markAsRead('lessons', id)} 
                                 />;
             case 'profile': return profile ? <StudentProfilePage profile={profile} onUpdateProfile={handleUpdateProfile} /> : null;
-            default: return <DashboardHome courses={courses} onSelectLesson={handleSelectLesson} studentName={profile?.personal.name} />;
+            default: return <DashboardHome courses={courses} tasks={tasks} schedule={schedule} updates={keyUpdates} onSelectLesson={handleSelectLesson} studentName={profile?.personal.name} />;
         }
     }
     
@@ -670,6 +758,9 @@ export const StudentDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout 
                     profile={profile}
                     onGoToProfile={handleGoToProfile}
                     onLogout={onLogout}
+                    unreadStatus={unreadStatus}
+                    onGoToTickets={handleGoToTickets}
+                    onGoToChat={handleGoToChat}
                 />
                 <main className={`flex-1 overflow-x-hidden overflow-y-auto p-8 ${mainBgClass} transition-colors duration-300`}>
                     {renderContent()}

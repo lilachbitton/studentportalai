@@ -15,7 +15,7 @@ const EyeIcon: React.FC = () => (
 
 const EyeSlashIcon: React.FC = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7 1.274-4.057 5.064 7 9.542 7 .847 0 1.67.111 2.458.317M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 2a9.954 9.954 0 01-1.666 3.333M3 3l18 18" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7 1.274-4.057 5.064 7 9.542 7 .847 0 1.67 .111 2.458 .317M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 2a9.954 9.954 0 01-1.666 3.333M3 3l18 18" />
   </svg>
 );
 
@@ -61,7 +61,7 @@ export const LoginForm: React.FC<{
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <input
-            type="text"
+            type="email"
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}

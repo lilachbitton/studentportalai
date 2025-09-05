@@ -1,8 +1,11 @@
-// Fix: Switched to Firebase v8 compat API to resolve module errors. This requires using the namespaced 'firebase' object.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-import 'firebase/compat/firestore';
-import 'firebase/compat/storage';
+
+// Fix: Use namespace imports for Firebase services to avoid potential module resolution issues.
+// This can resolve module resolution issues in some environments without changing the API contract,
+// ensuring compatibility with other files using Firebase v9 modular syntax.
+import * as firebaseApp from "firebase/app";
+import * as firebaseAuth from "firebase/auth";
+import * as firestore from "firebase/firestore";
+import * as firebaseStorage from "firebase/storage";
 
 // Your web app's Firebase configuration, corrected based on user's provided config.
 const firebaseConfig = {
@@ -16,9 +19,9 @@ const firebaseConfig = {
 
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+const app = firebaseApp.initializeApp(firebaseConfig);
 
 // Export Firebase services
-export const auth = firebase.auth();
-export const db = firebase.firestore();
-export const storage = firebase.storage();
+export const auth = firebaseAuth.getAuth(app);
+export const db = firestore.getFirestore(app);
+export const storage = firebaseStorage.getStorage(app);

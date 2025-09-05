@@ -6,7 +6,10 @@
  * It now uses Firebase for authentication and will use Firestore for data.
  */
 import { v4 as uuidv4 } from 'uuid';
-// Fix: Updated Firebase imports to work with the v8 compatibility layer. Modular imports are removed.
+// Firebase v9+ modular imports
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from './firebase';
 
 import type { Course, Lesson, StudentProfileData } from '../pages/StudentDashboard';
@@ -131,22 +134,18 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 export const api = {
   // --- Authentication ---
   async login(email, password, rememberMe) {
-    // Hardcoded admin login as requested
     if (email.toLowerCase() === 'admin' && password === 'admin') {
       return { success: true, role: 'admin' };
     }
     
     try {
-      // Fix: Switched to Firebase v8 compat API for authentication.
-      const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fetch user role from Firestore
-      // Fix: Switched to Firebase v8 compat API for Firestore.
-      const userDocRef = db.collection("users").doc(user.uid);
-      const userDocSnap = await userDocRef.get();
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
 
-      if (userDocSnap.exists) {
+      if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
         return { success: true, role: userData.role || 'student' };
       } else {
@@ -166,12 +165,10 @@ export const api = {
   async register(userData) {
     const { email, password, fullName, phone } = userData;
     try {
-      // Fix: Switched to Firebase v8 compat API for authentication.
-      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fix: Switched to Firebase v8 compat API for Firestore.
-      await db.collection("users").doc(user.uid).set({
+      await setDoc(doc(db, "users", user.uid), {
         fullName: fullName,
         email: email,
         phone: phone,
@@ -204,8 +201,7 @@ export const api = {
 
   async forgotPassword(email) {
     try {
-      // Fix: Switched to Firebase v8 compat API for authentication.
-      await auth.sendPasswordResetEmail(email);
+      await sendPasswordResetEmail(auth, email);
       return { success: true, message: 'אם קיים חשבון עם כתובת המייל, ישלח אליך קישור לאיפוס סיסמה.' };
     } catch (error) {
        console.error("Firebase password reset error:", error.code);
@@ -215,8 +211,7 @@ export const api = {
   
   async logout() {
     try {
-      // Fix: Switched to Firebase v8 compat API for authentication.
-      await auth.signOut();
+      await signOut(auth);
       console.log('User logged out');
     } catch (error) {
       console.error("Error signing out: ", error);
@@ -266,11 +261,10 @@ export const api = {
         };
     }
     
-    // Fix: Switched to Firebase v8 compat API for Firestore.
-    const userDocRef = db.collection("users").doc(user.uid);
-    const userDocSnap = await userDocRef.get();
+    const userDocRef = doc(db, "users", user.uid);
+    const userDocSnap = await getDoc(userDocRef);
 
-    if (userDocSnap.exists) {
+    if (userDocSnap.exists()) {
         const data = userDocSnap.data();
         return {
             personal: {
@@ -305,14 +299,11 @@ export const api = {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    // Fix: Switched to Firebase v8 compat API for Firestore.
-    const userDocRef = db.collection("users").doc(user.uid);
+    const userDocRef = doc(db, "users", user.uid);
     try {
-        // Fix: Switched to Firebase v8 compat API for Firestore.
-        await userDocRef.update({
+        await updateDoc(userDocRef, {
             personal: newProfileData.personal,
             professional: newProfileData.professional,
-            // also update top-level fields for backwards compatibility
             fullName: newProfileData.personal.name, 
             email: newProfileData.personal.email,
             phone: newProfileData.personal.phone,
@@ -328,21 +319,15 @@ export const api = {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    // Fix: Switched to Firebase v8 compat API for Storage.
-    const storageRef = storage.ref(`profile-pictures/${user.uid}`);
+    const storageRef = ref(storage, `profile-pictures/${user.uid}`);
     try {
-      // Read the file into an ArrayBuffer for a more robust upload.
       const arrayBuffer = await file.arrayBuffer();
-      // Upload the ArrayBuffer and explicitly provide the content type.
-      // Fix: Switched to Firebase v8 compat API for Storage.
-      await storageRef.put(arrayBuffer, { contentType: file.type });
+      await uploadBytes(storageRef, arrayBuffer, { contentType: file.type });
       
-      // Fix: Switched to Firebase v8 compat API for Storage.
-      const downloadURL = await storageRef.getDownloadURL();
+      const downloadURL = await getDownloadURL(storageRef);
       
-      // Fix: Switched to Firebase v8 compat API for Firestore.
-      const userDocRef = db.collection("users").doc(user.uid);
-      await userDocRef.update({
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
           "personal.imageUrl": downloadURL
       });
       
@@ -355,7 +340,6 @@ export const api = {
 
   async addTicket(ticketData, studentName) {
       await delay(400);
-      // Fix: Explicitly type the new ticket object to match the `Ticket` interface.
       const newTicket: Ticket = {
             id: `TKT-${String(mockTickets.length + 1).padStart(3, '0')}`,
             lastUpdate: new Date().toLocaleDateString('he-IL'),

@@ -39,10 +39,6 @@ export const AdminStudentsPage: React.FC<AdminStudentsPageProps> = ({ students, 
                     <h1 className="text-4xl font-bold">ניהול תלמידים</h1>
                     <p className="text-slate-400 mt-2">ניהול כלל התלמידים הרשומים במערכת.</p>
                 </div>
-                <button className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-5 rounded-lg flex items-center gap-2 transition-transform hover:scale-105">
-                    <PlusIcon />
-                    <span>הוסף תלמיד חדש</span>
-                </button>
             </header>
 
             <div className="bg-[#243041] p-6 rounded-2xl shadow-lg">

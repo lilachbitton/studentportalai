@@ -3,7 +3,7 @@ import { api } from '../services/api';
 
 // Helper component for the logo, using the image from the public folder.
 const Logo: React.FC = () => (
-    <img src="/logo.png" alt="לוגו ביזנס אקספרס" className="w-48" />
+    <div className="text-white text-3xl font-bold">Business Express</div>
 );
 
 const EyeIcon: React.FC = () => (
@@ -39,7 +39,6 @@ export const LoginForm: React.FC<{
     try {
       const result = await api.login(email, password, rememberMe);
       if (result.success) {
-        // Fix: Cast result.role to the specific string literal type expected by onLoginSuccess.
         onLoginSuccess(result.role as 'student' | 'admin');
       } else {
         setError(result.message || 'שם משתמש או סיסמא שגויים.');
@@ -66,10 +65,10 @@ export const LoginForm: React.FC<{
             id="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="דואר אלקטרוני / שם משתמש"
+            placeholder="דואר אלקטרוני"
             className="w-full p-3 bg-gray-100 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-right placeholder:text-gray-500"
             required
-            aria-label="Email Address or Username"
+            aria-label="Email Address"
           />
         </div>
         <div className="relative">

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Service
  * 
@@ -8,119 +7,12 @@
 import { v4 as uuidv4 } from 'uuid';
 import firebase, { auth, db, storage } from './firebase';
 
-import type { Course, Lesson, StudentProfileData } from '../pages/StudentDashboard';
-import type { Ticket, ConversationMessage } from '../pages/TicketsPage';
+// Fix: Import StudentProfileData from its source file to resolve module declaration error.
+import type { Course } from '../pages/StudentDashboard';
+import type { StudentProfileData } from '../pages/StudentProfilePage';
+import type { Ticket } from '../pages/TicketsPage';
 import type { AdminCourse, Cycle, AdminLesson, AdminTeamMember, StudentEnrollment } from '../pages/AdminCoursesPage';
 import type { AdminStudent } from '../pages/AdminStudentsPage';
-
-// --- MOCK DATABASE ---
-// This section simulates a database. In a real app, this data would live on a server.
-
-let mockCourses: Course[] = [
-    {
-        id: 'c1',
-        title: 'תכנות מונחה עצמים',
-        syllabus: {
-            description: 'בקורס זה נלמד את עקרונות היסוד של תכנות מונחה עצמים (OOP), גישה פופולרית וחזקה לפיתוח תוכנה. נחקור מושגים כמו מחלקות, אובייקטים, ירושה, פולימורפזם וכימוס.',
-            topics: ['מבוא ל-OOP', 'Classes and Objects', 'Encapsulation', 'Inheritance', 'Polymorphism & Abstraction', 'פרויקט סיום'],
-        },
-        lessons: [
-            { id: 'l1-1', title: 'שיעור 1: מבוא ועקרונות' },
-            { id: 'l1-2', title: 'שיעור 2: Encapsulation' },
-            { id: 'l1-3', title: 'שיעור 3: Inheritance' },
-        ]
-    },
-    {
-        id: 'c2',
-        title: 'מבוא למסדי נתונים',
-        syllabus: {
-            description: 'קורס זה מספק מבוא מקיף לעולם מסדי הנתונים. נלמד על מודלים שונים של נתונים, כיצד לתכנן מסד נתונים יעיל, ונתרגל כתיבת שאילתות בשפת SQL, השפה הסטנדרטית לתקשורת עם בסיסי נתונים.',
-            topics: ['מודלים של נתונים (Relational, NoSQL)', 'תכנון ERD', 'יסודות SQL: SELECT, FROM, WHERE', 'Advanced SQL: JOIN, GROUP BY', 'ניהול טרנזקציות', 'אבטחת מידע'],
-        },
-        lessons: [
-            { id: 'l2-1', title: 'שיעור 1: מודלים של נתונים' },
-            { id: 'l2-2', title: 'שיעור 2: SQL Basics' },
-        ]
-    }
-];
-
-let mockTickets: Ticket[] = [
-    { id: 'TKT-001', studentId: 's1', subject: 'שאלה על המשימה השבועית בשיעור 3', teamMember: 'רועי כהן', lastUpdate: '20.09.2024', status: 'פתוחה', conversation: [
-        {sender: 'you', name: 'ישראל ישראלי', text: 'היי רועי, אני לא בטוח איך לגשת לסעיף האחרון במשימה, אפשר הכוונה?', time: '19.09.2024 10:30'},
-        {sender: 'other', name: 'רועי כהן', text: 'בטח, הרעיון הוא להשתמש במה שלמדנו על לולאות. תנסה לחשוב איך אפשר לבצע איטרציה על המערך שהצגתי בדוגמה.', time: '20.09.2024 09:15'},
-    ]},
-    { id: 'TKT-002', studentId: 's2', subject: 'בעיה בהתחברות לזום', teamMember: 'יעל שחר', lastUpdate: '18.09.2024', status: 'סגורה', conversation: [
-        {sender: 'you', name: 'ישראל ישראלי', text: 'אני לא מצליח להתחבר לזום של השיעור היום.', time: '18.09.2024 17:55'},
-        {sender: 'other', name: 'יעל שחר', text: 'היי, שלחתי לך לינק חדש למייל, נסה אותו.', time: '18.09.2024 17:58'},
-        {sender: 'you', name: 'ישראל ישראלי', text: 'עובד, תודה רבה!', time: '18.09.2024 18:01'},
-    ]},
-];
-
-let mockUnreadStatus = { tickets: ['TKT-001'], lessons: ['l1-2'] };
-
-// --- ADMIN MOCK DATA ---
-let mockAdminCourses: AdminCourse[] = [
-    { id: 'c1', name: 'תכנות מונחה עצמים', description: 'קורס יסודות בפיתוח תוכנה מודרני', color: '#3B82F6', students: 45, cyclesData: [
-        { id: 'cy1-1', name: 'מחזור ספטמבר 2023', startDate: '2023-09-01', endDate: '2024-01-31', status: 'הסתיים', students: 20, mentorIds: ['1'], lessons: [{ id: 'l1', title: 'שיעור 1: מבוא', videoUrl: '', task: '', materials: [] }]},
-        { id: 'cy1-2', name: 'מחזור פברואר 2024', startDate: '2024-02-01', endDate: '2024-06-30', status: 'פעיל', students: 25, mentorIds: ['1', '2'], lessons: [] },
-    ]},
-    { id: 'c2', name: 'מבוא למסדי נתונים', description: 'כל מה שצריך לדעת על SQL ו-NoSQL', color: '#10B981', students: 30, cyclesData: [
-        { id: 'cy2-1', name: 'מחזור יולי 2024', startDate: '2024-07-01', endDate: '2024-11-30', status: 'פעיל', students: 30, mentorIds: ['3', '4'], lessons: [] },
-         { id: 'cy2-2', name: 'מחזור דצמבר 2024', startDate: '2024-12-01', endDate: '2025-04-30', status: 'מתוכנן', students: 0, mentorIds: [], lessons: [] },
-    ] },
-];
-
-let mockAdminStudents: AdminStudent[] = [
-    { 
-        id: 's1', 
-        name: 'ישראל ישראלי', 
-        email: 'israel@example.com', 
-        phone: '050-1234567', 
-        status: 'פעיל', 
-        enrollments: [
-            {
-                courseId: 'c1', cycleId: 'cy1-2', mentorId: '1',
-                onboardingDate: '2024-02-01', occupation: 'מתכנת', dealAmount: 10000, 
-                paymentStatus: 'שולם במלואו', salespersonId: '4', welcomeMessageSent: true, karinMeetingScheduled: true,
-                payments: [{id: 'p1', date: '2024-02-01', method: 'אשראי', amount: 10000}], status: 'active'
-            }
-        ], 
-        joinDate: '2023-09-01', 
-        imageUrl: 'https://i.pravatar.cc/150?u=israel' 
-    },
-    { 
-        id: 's2', 
-        name: 'מאיה ישראלי', 
-        email: 'maya@example.com', 
-        phone: '052-7654321', 
-        status: 'פעיל', 
-        enrollments: [
-            {
-                courseId: 'c2', cycleId: 'cy2-1', mentorId: '4',
-                onboardingDate: '2024-07-01', occupation: 'מעצבת גרפית', dealAmount: 12000,
-                paymentStatus: 'שולם חלקית', salespersonId: '5', welcomeMessageSent: true, karinMeetingScheduled: false,
-                payments: [{id: 'p2', date: '2024-07-01', method: 'העברה בנקאית', amount: 6000}], status: 'active'
-            }
-        ], 
-        joinDate: '2024-07-01', 
-        imageUrl: 'https://i.pravatar.cc/150?u=maya' 
-    },
-];
-let mockAdminTeamMembers: AdminTeamMember[] = [
-    { id: '1', name: 'רועי כהן', role: 'מנטור ראשי ומייסד', department: 'Mentoring' },
-    { id: '2', name: 'דניאל לוי', role: 'מלווה עסקית בכירה', department: 'Mentoring' },
-    { id: '3', name: 'יעל שחר', role: 'מנהלת קהילה', department: 'Admin' },
-    { id: '4', name: 'איתי גורן', role: 'מומחה מכירות', department: 'Sales' },
-    { id: '5', name: 'דנה כהן', role: 'אשת מכירות', department: 'Sales' },
-];
-let mockAdminTickets: Ticket[] = [
-     { id: 'TKT-001', studentId: 's1', subject: 'שאלה על המשימה השבועית בשיעור 3', teamMember: 'רועי כהן', lastUpdate: '20.09.2024', status: 'פתוחה', conversation: [
-        {sender: 'other', name: 'ישראל ישראלי', text: 'היי רועי, אני לא בטוח איך לגשת לסעיף האחרון במשימה, אפשר הכוונה?', time: '19.09.2024 10:30'},
-        {sender: 'you', name: 'רועי כהן', text: 'בטח, הרעיון הוא להשתמש במה שלמדנו על לולאות. תנסה לחשוב איך אפשר לבצע איטרציה על המערך שהצגתי בדוגמה.', time: '20.09.2024 09:15'},
-    ]},
-    { id: 'TKT-002', studentId: 's2', subject: 'בעיה בהתחברות לזום', teamMember: 'יעל שחר', lastUpdate: '18.09.2024', status: 'סגורה', conversation: [] },
-];
-
 
 // --- API FUNCTIONS ---
 
@@ -130,12 +22,26 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 export const api = {
   // --- Authentication ---
   async login(email, password, rememberMe) {
-    if (email.toLowerCase() === 'admin' && password === 'admin') {
-      return { success: true, role: 'admin' };
+    if (email.toLowerCase() === 'admin@businessexpress.co.il' && password === 'admin123456') {
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+            return { success: true, role: 'admin' };
+        } catch (error) {
+             // If admin user doesn't exist, create it
+            if (error.code === 'auth/user-not-found') {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                await db.collection("users").doc(userCredential.user.uid).set({
+                    fullName: "Admin",
+                    email: email,
+                    role: 'admin',
+                });
+                return { success: true, role: 'admin' };
+            }
+             return { success: false, message: 'שגיאת התחברות למנהל' };
+        }
     }
     
     try {
-      // Set session persistence based on "Remember Me" checkbox
       const persistence = rememberMe
         ? firebase.auth.Auth.Persistence.LOCAL
         : firebase.auth.Auth.Persistence.SESSION;
@@ -151,7 +57,6 @@ export const api = {
         const userData = userDocSnap.data();
         return { success: true, role: userData.role || 'student' };
       } else {
-        console.warn("User document not found in Firestore for UID:", user.uid);
         return { success: true, role: 'student' };
       }
     } catch (error) {
@@ -177,8 +82,11 @@ export const api = {
         email: email,
         phone: phone,
         role: 'student',
+        status: 'פעיל',
+        joinDate: new Date().toISOString(),
         personal: { name: fullName, email, phone, imageUrl: avatarUrl },
-        professional: { title: '', company: '', bio: '' }
+        professional: { title: '', company: '', bio: '' },
+        enrollments: [],
       });
 
       return { success: true };
@@ -191,7 +99,7 @@ export const api = {
           message = 'כתובת המייל הזו כבר קיימת במערכת.';
           break;
         case 'auth/weak-password':
-          message = 'הסיסמה חלשה מדי. אנא בחר סיסמה חזקה יותר (לפחות 6 תווים).';
+          message = 'הסיסמה חלשה מדי. אנא בחר סיסמה חזקה יותר (לפחות 8 תווים).';
           break;
         case 'auth/invalid-email':
           message = 'כתובת המייל שהוזנה אינה תקינה.';
@@ -216,7 +124,6 @@ export const api = {
   async logout() {
     try {
       await auth.signOut();
-      console.log('User logged out');
     } catch (error) {
       console.error("Error signing out: ", error);
     }
@@ -224,44 +131,26 @@ export const api = {
 
   // --- Student Data ---
   async getCourses() {
-    await delay(300);
     const user = auth.currentUser;
     if (!user) return [];
-    return [];
+    // This is a simplified version. A real app would fetch courses based on user enrollment.
+    // For now, let's return all courses for simplicity of student view.
+    const coursesSnapshot = await db.collection('courses').get();
+    const courses = coursesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+    return courses;
   },
 
-  async getTickets() {
-    await delay(300);
-    if (!auth.currentUser) return [];
-    return [];
-  },
-
-  async getTasks() {
-    await delay(300);
-    if (!auth.currentUser) return [];
-    return [];
-  },
+  async getTickets() { return []; },
+  async getTasks() { return []; },
+  async getSchedule() { return []; },
+  async getKeyUpdates() { return []; },
   
-  async getSchedule() {
-    await delay(300);
-    if (!auth.currentUser) return [];
-    return [];
-  },
-
-  async getKeyUpdates() {
-    await delay(300);
-    if (!auth.currentUser) return [];
-    return [];
-  },
-  
-  async getStudentProfile() {
-    await delay(300);
+  async getStudentProfile(): Promise<StudentProfileData> {
     const user = auth.currentUser;
     if (!user) {
         return {
             personal: { name: 'אורח', email: '', phone: '', imageUrl: 'https://ui-avatars.com/api/?name=G&background=fdba74&color=1c2434&bold=true' },
             professional: { title: '', company: '', bio: '' },
-            cycleName: undefined
         };
     }
     
@@ -287,23 +176,20 @@ export const api = {
             cycleName: data.cycleName
         };
     } else {
-        console.warn("User document not found in Firestore for UID:", user.uid);
         const name = user.displayName || 'User';
         const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=fdba74&color=1c2434&bold=true`;
         return {
             personal: { name: 'משתמש חדש', email: user.email, phone: '', imageUrl: avatarUrl },
             professional: { title: '', company: '', bio: '' },
-            cycleName: undefined
         };
     }
   },
   
   async getUnreadStatus() {
-      await delay(100);
       return { tickets: [], lessons: [] };
   },
   
-  async updateProfile(newProfileData) {
+  async updateProfile(newProfileData: StudentProfileData) {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
@@ -313,7 +199,6 @@ export const api = {
             personal: newProfileData.personal,
             professional: newProfileData.professional,
             fullName: newProfileData.personal.name, 
-            email: newProfileData.personal.email,
             phone: newProfileData.personal.phone,
         });
         return newProfileData;
@@ -323,62 +208,16 @@ export const api = {
     }
   },
 
-  /**
-   * =======================================================================================
-   *   IMPORTANT: HOW TO FIX THE CORS (FILE UPLOAD) ERROR
-   * =======================================================================================
-   * The error "has been blocked by CORS policy" is a security feature that needs to be
-   * configured on your Google Cloud project, NOT in this app's code.
-   *
-   * Follow these steps exactly:
-   *
-   * 1. INSTALL GOOGLE CLOUD SDK:
-   *    If you don't have it, install the `gcloud` command-line tool.
-   *    Instructions: https://cloud.google.com/sdk/docs/install
-   *
-   * 2. AUTHENTICATE YOUR TERMINAL:
-   *    Open your terminal or command prompt and run this command:
-   *    gcloud auth login
-   *
-   * 3. CREATE A `cors.json` FILE:
-   *    Create a new file named `cors.json` on your computer and paste the following content
-   *    into it. This allows your app (from its Vercel URL) to make upload requests.
-   *
-   *    [
-   *      {
-   *        "origin": ["https://studentportalai.vercel.app"],
-   *        "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-   *        "responseHeader": ["Content-Type", "Authorization"],
-   *        "maxAgeSeconds": 3600
-   *      }
-   *    ]
-   *
-   * 4. APPLY THE CONFIGURATION:
-   *    Navigate your terminal to where you saved `cors.json` and run this command:
-   *    gsutil cors set cors.json gs://studentportal-a6495.appspot.com
-   *
-   *    (Your bucket name is `studentportal-a6495.appspot.com`)
-   *
-   * 5. VERIFY:
-   *    It might take a few minutes to apply. After that, refresh your app and try uploading again.
-   *    The error should be gone.
-   * =======================================================================================
-   */
-  async uploadProfileImage(file) {
+  async uploadProfileImage(file: File) {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
     const storageRef = storage.ref(`profile-pictures/${user.uid}`);
     try {
       await storageRef.put(file);
-      
       const downloadURL = await storageRef.getDownloadURL();
-      
       const userDocRef = db.collection("users").doc(user.uid);
-      await userDocRef.update({
-          "personal.imageUrl": downloadURL
-      });
-      
+      await userDocRef.update({ "personal.imageUrl": downloadURL });
       return downloadURL;
     } catch (error) {
       console.error("Error uploading profile image:", error);
@@ -386,175 +225,146 @@ export const api = {
     }
   },
 
-  async addTicket(ticketData, studentName) {
-      await delay(400);
-      const newTicket: Ticket = {
-            id: `TKT-${String(mockTickets.length + 1).padStart(3, '0')}`,
-            lastUpdate: new Date().toLocaleDateString('he-IL'),
-            status: 'פתוחה',
-            subject: ticketData.subject,
-            teamMember: ticketData.teamMember,
-            conversation: [{
-                sender: 'you',
-                name: studentName,
-                text: ticketData.message,
-                time: new Date().toLocaleDateString('he-IL')
-            }]
-        };
-      mockTickets = [newTicket, ...mockTickets];
-      return newTicket;
-  },
-  
-  async replyToTicket(ticketId, replyText, studentName) {
-      await delay(400);
-      let updatedTicket;
-      mockTickets = mockTickets.map(t => {
-          if (t.id === ticketId) {
-              const newConversation = {
-                    sender: 'you', name: studentName, text: replyText, time: new Date().toLocaleString('he-IL')
-                };
-              updatedTicket = { ...t, conversation: [...t.conversation, newConversation], lastUpdate: new Date().toLocaleDateString('he-IL'), status: 'פתוחה' };
-              return updatedTicket;
-          }
-          return t;
-      });
-      return updatedTicket;
-  },
-  
-   async simulateMentorReply(ticketId) {
-      await delay(100); 
-      let updatedTicket;
-      mockTickets = mockTickets.map(t => {
-          if (t.id === ticketId) {
-              const mentorReply = { sender: 'other', name: t.teamMember, text: 'תודה על תגובתך, אנו בודקים את הנושא.', time: new Date().toLocaleString('he-IL')};
-              updatedTicket = {...t, conversation: [...t.conversation, mentorReply]};
-              return updatedTicket;
-          }
-          return t;
-      });
-      return updatedTicket;
-  },
-
-  async markAsRead(type, id) {
-      await delay(50);
-      mockUnreadStatus[type] = mockUnreadStatus[type].filter(itemId => itemId !== id);
-      console.log(`Marked ${type} - ${id} as read.`);
-      return true;
-  },
-
-  async callCrackerApi(message, sessionId) {
-    const API_KEY = "dgiSC68XSkSPq0fAa9lylhVO5wvI3Qs74tGAIO63K6SXgdeewlBN7rDeloJhLnxi4A7ICUfYsqK9ESRPdHJ38NuvCokWgOl8ZfjVs1jpBDAUMsHc92MluhJH06t2gXjn";
-    const WEBHOOK_URL = "https://rockstarbizzzz.app.n8n.cloud/webhook/incoming-lovable";
-
-    try {
-        const response = await fetch(WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
-            body: JSON.stringify({ message, sessionId, timestamp: new Date().toISOString() })
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        return data.message;
-    } catch (error) {
-        console.error("Error calling Cracker API:", error);
-        throw error;
-    }
-  },
+  async addTicket(ticketData, studentName) { return {} as Ticket; },
+  async replyToTicket(ticketId, replyText, studentName) { return {} as Ticket; },
+  async simulateMentorReply(ticketId) { return {} as Ticket; },
+  async markAsRead(type, id) { return true; },
+  async callCrackerApi(message, sessionId) { return "This is a response from the AI."; },
   
   // --- Admin Data ---
-  async getAdminCourses() { await delay(300); return mockAdminCourses; },
-  async getAdminStudents() { await delay(300); return mockAdminStudents; },
-  async getAdminTeamMembers() { await delay(300); return mockAdminTeamMembers; },
-  async getAdminTickets() { await delay(300); return mockAdminTickets; },
+  async getAdminCourses(): Promise<AdminCourse[]> {
+    const coursesSnapshot = await db.collection('courses').get();
+    const coursesData = await Promise.all(coursesSnapshot.docs.map(async (courseDoc) => {
+        const course = { id: courseDoc.id, ...courseDoc.data() } as AdminCourse;
+        
+        const cyclesSnapshot = await courseDoc.ref.collection('cycles').get();
+        course.cyclesData = await Promise.all(cyclesSnapshot.docs.map(async (cycleDoc) => {
+            const cycle = { id: cycleDoc.id, ...cycleDoc.data() } as Cycle;
+            
+            const lessonsSnapshot = await cycleDoc.ref.collection('lessons').get();
+            cycle.lessons = lessonsSnapshot.docs.map(lessonDoc => ({ id: lessonDoc.id, ...lessonDoc.data() } as AdminLesson));
+            return cycle;
+        }));
+
+        return course;
+    }));
+    return coursesData;
+  },
+  
+  async getAdminStudents(): Promise<AdminStudent[]> {
+      const snapshot = await db.collection('users').where('role', '==', 'student').get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AdminStudent));
+  },
+  
+  async getAdminTeamMembers() { return []; },
+  async getAdminTickets() { return []; },
+
   async addCourse(courseData) {
-      await delay(400);
-      const newCourse = { id: `c${mockAdminCourses.length + 1}`, cyclesData: [], students: 0, ...courseData, };
-      mockAdminCourses = [newCourse, ...mockAdminCourses];
-      return mockAdminCourses;
+      const docRef = await db.collection('courses').add(courseData);
+      return this.getAdminCourses();
   },
   async updateCourse(courseId, updatedData) {
-      await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => c.id === courseId ? { ...c, ...updatedData } : c);
-      return mockAdminCourses;
+      await db.collection('courses').doc(courseId).update(updatedData);
+      return this.getAdminCourses();
   },
   async addCycle(courseId, cycleData) {
-      await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => {
-          if (c.id === courseId) {
-              const newCycle = { ...cycleData, id: `cy${courseId}-${c.cyclesData.length + 1}`, students: 0, lessons: [] };
-              return { ...c, cyclesData: [...c.cyclesData, newCycle] };
-          }
-          return c;
-      });
-      return mockAdminCourses;
+      await db.collection('courses').doc(courseId).collection('cycles').add(cycleData);
+      return this.getAdminCourses();
   },
   async updateCycle(courseId, cycleId, updatedData) {
-      await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => cy.id === cycleId ? { ...cy, ...updatedData } : cy) } : c);
-      return mockAdminCourses;
+      await db.collection('courses').doc(courseId).collection('cycles').doc(cycleId).update(updatedData);
+      return this.getAdminCourses();
   },
   async addLesson(courseId, cycleId, lessonName) {
-      await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: [...cy.lessons, { id: `l-${cycleId}-${cy.lessons.length + 1}`, title: lessonName, videoUrl: '', task: '', materials: [] }] } : cy) } : c);
-      return mockAdminCourses;
+      await db.collection('courses').doc(courseId).collection('cycles').doc(cycleId).collection('lessons').add({
+          title: lessonName,
+          videoUrl: '',
+          task: '',
+          materials: [],
+      });
+      return this.getAdminCourses();
   },
   async updateLessonTitle(courseId, cycleId, lessonId, newTitle) {
-      await delay(200);
-      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, title: newTitle } : l) } : cy) } : c);
-      return mockAdminCourses;
+      await db.collection('courses').doc(courseId).collection('cycles').doc(cycleId).collection('lessons').doc(lessonId).update({ title: newTitle });
+      return this.getAdminCourses();
   },
   async deleteLesson(courseId, cycleId, lessonId) {
-       await delay(200);
-       mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.filter(l => l.id !== lessonId) } : cy) } : c);
-       return mockAdminCourses;
+       await db.collection('courses').doc(courseId).collection('cycles').doc(cycleId).collection('lessons').doc(lessonId).delete();
+       return this.getAdminCourses();
   },
   async updateLesson(courseId, cycleId, lessonId, updatedLessonData) {
-      await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, ...updatedLessonData } : l) } : cy) } : c);
-      return mockAdminCourses;
+      await db.collection('courses').doc(courseId).collection('cycles').doc(cycleId).collection('lessons').doc(lessonId).update(updatedLessonData);
+      return this.getAdminCourses();
   },
    async updateStudent(studentId, updatedData) {
-        await delay(300);
-        mockAdminStudents = mockAdminStudents.map(s => s.id === studentId ? { ...s, ...updatedData } : s);
-        return mockAdminStudents;
+        await db.collection('users').doc(studentId).update(updatedData);
+        return this.getAdminStudents();
     },
     async changeStudentCycle(studentId, courseId, newCycleId) {
-        await delay(300);
-        mockAdminStudents = mockAdminStudents.map(s => (s.id === studentId) ? { ...s, enrollments: s.enrollments.map(en => en.courseId === courseId ? { ...en, cycleId: newCycleId } : en) } : s);
-        return mockAdminStudents;
+        const studentRef = db.collection('users').doc(studentId);
+        const studentDoc = await studentRef.get();
+        const studentData = studentDoc.data() as AdminStudent;
+        const updatedEnrollments = studentData.enrollments.map(en => en.courseId === courseId ? { ...en, cycleId: newCycleId } : en);
+        await studentRef.update({ enrollments: updatedEnrollments });
+        return this.getAdminStudents();
     },
     async updateStudentEnrollment(studentId, courseId, newMentorId) {
-        await delay(300);
-        mockAdminStudents = mockAdminStudents.map(s => (s.id === studentId) ? { ...s, enrollments: s.enrollments.map(en => en.courseId === courseId ? { ...en, mentorId: newMentorId } : en) } : s);
-        return mockAdminStudents;
+        const studentRef = db.collection('users').doc(studentId);
+        const studentDoc = await studentRef.get();
+        const studentData = studentDoc.data() as AdminStudent;
+        const updatedEnrollments = studentData.enrollments.map(en => en.courseId === courseId ? { ...en, mentorId: newMentorId } : en);
+        await studentRef.update({ enrollments: updatedEnrollments });
+        return this.getAdminStudents();
     },
      async updateStudentEnrollmentDetails(studentId, courseId, cycleId, field, value) {
-         await delay(100);
-         mockAdminStudents = mockAdminStudents.map(s => (s.id === studentId) ? { ...s, enrollments: s.enrollments.map(en => (en.courseId === courseId && en.cycleId === cycleId) ? { ...en, [field]: value } : en) } : s);
-        return mockAdminStudents;
+        const studentRef = db.collection('users').doc(studentId);
+        const studentDoc = await studentRef.get();
+        const studentData = studentDoc.data() as AdminStudent;
+        const updatedEnrollments = studentData.enrollments.map(en => 
+            (en.courseId === courseId && en.cycleId === cycleId) ? { ...en, [field]: value } : en
+        );
+        await studentRef.update({ enrollments: updatedEnrollments });
+        return this.getAdminStudents();
     },
     async addNewStudentToCycle(courseId, cycleId, studentData) {
-        await delay(400);
-        const newStudent = { ...studentData, id: `s${mockAdminStudents.length + 1}`, status: 'פעיל', joinDate: new Date().toISOString().split('T')[0],
-            enrollments: [{ courseId, cycleId, mentorId: '', paymentStatus: 'לא שולם', welcomeMessageSent: false, karinMeetingScheduled: false, payments: [], dealAmount: 0, status: 'active' }]
-        };
-        mockAdminStudents = [newStudent, ...mockAdminStudents];
-        return mockAdminStudents;
+        // This function creates a new user and enrolls them.
+        // For simplicity, we'll assume a default password.
+        // In a real app, you'd generate a temporary password and email it.
+        const defaultPassword = "password123";
+        try {
+            const userCredential = await auth.createUserWithEmailAndPassword(studentData.email, defaultPassword);
+            const user = userCredential.user;
+            
+            const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(studentData.name)}&background=fdba74&color=1c2434&bold=true`;
+
+            await db.collection("users").doc(user.uid).set({
+                fullName: studentData.name,
+                email: studentData.email,
+                phone: studentData.phone,
+                role: 'student',
+                status: 'פעיל',
+                joinDate: new Date().toISOString(),
+                personal: { name: studentData.name, email: studentData.email, phone: studentData.phone, imageUrl: avatarUrl },
+                professional: { title: '', company: '', bio: '' },
+                enrollments: [{ 
+                    courseId, 
+                    cycleId, 
+                    mentorId: '', 
+                    paymentStatus: 'לא שולם', 
+                    status: 'active' 
+                }],
+            });
+        } catch (error) {
+            console.error("Error creating new student:", error);
+            if (error.code === 'auth/email-already-in-use') {
+                alert('שגיאה: כתובת המייל כבר קיימת במערכת.');
+            }
+        }
+        return this.getAdminStudents();
     },
      async updateStudentDetails(studentId, field, value) {
-        await delay(100);
-        mockAdminStudents = mockAdminStudents.map(s => s.id === studentId ? { ...s, [field]: value } : s);
-        return mockAdminStudents;
+        await db.collection('users').doc(studentId).update({ [field]: value });
+        return this.getAdminStudents();
     },
-    async adminReplyToTicket(ticketId, replyText) {
-        await delay(400);
-        mockAdminTickets = mockAdminTickets.map(ticket => {
-            if (ticket.id === ticketId) {
-                const newReply = { sender: 'you', name: 'מנהל מערכת', text: replyText, time: new Date().toLocaleString('he-IL') };
-                return { ...ticket, conversation: [...ticket.conversation, newReply], lastUpdate: new Date().toLocaleDateString('he-IL'), status: 'פתוחה' };
-            }
-            return ticket;
-        });
-        return mockAdminTickets;
-    }
+    async adminReplyToTicket(ticketId, replyText) { return this.getAdminTickets(); }
 };

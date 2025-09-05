@@ -169,13 +169,15 @@ export const api = {
     try {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
+      
+      const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=fdba74&color=1c2434&bold=true`;
 
       await db.collection("users").doc(user.uid).set({
         fullName: fullName,
         email: email,
         phone: phone,
         role: 'student',
-        personal: { name: fullName, email, phone, imageUrl: '/default-avatar.png' },
+        personal: { name: fullName, email, phone, imageUrl: avatarUrl },
         professional: { title: '', company: '', bio: '' }
       });
 
@@ -257,7 +259,7 @@ export const api = {
     const user = auth.currentUser;
     if (!user) {
         return {
-            personal: { name: 'אורח', email: '', phone: '', imageUrl: '/default-avatar.png' },
+            personal: { name: 'אורח', email: '', phone: '', imageUrl: 'https://ui-avatars.com/api/?name=G&background=fdba74&color=1c2434&bold=true' },
             professional: { title: '', company: '', bio: '' },
             cycleName: undefined
         };
@@ -268,12 +270,14 @@ export const api = {
 
     if (userDocSnap.exists) {
         const data = userDocSnap.data();
+        const name = data.personal?.name || data.fullName || 'User';
+        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=fdba74&color=1c2434&bold=true`;
         return {
             personal: {
-                name: data.personal?.name || data.fullName || 'שם לא זמין',
+                name: name,
                 email: data.personal?.email || data.email || user.email,
                 phone: data.personal?.phone || data.phone || '',
-                imageUrl: data.personal?.imageUrl || '/default-avatar.png'
+                imageUrl: data.personal?.imageUrl || avatarUrl
             },
             professional: {
                 title: data.professional?.title || '',
@@ -284,8 +288,10 @@ export const api = {
         };
     } else {
         console.warn("User document not found in Firestore for UID:", user.uid);
+        const name = user.displayName || 'User';
+        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=fdba74&color=1c2434&bold=true`;
         return {
-            personal: { name: 'משתמש חדש', email: user.email, phone: '', imageUrl: '/default-avatar.png' },
+            personal: { name: 'משתמש חדש', email: user.email, phone: '', imageUrl: avatarUrl },
             professional: { title: '', company: '', bio: '' },
             cycleName: undefined
         };
@@ -317,6 +323,47 @@ export const api = {
     }
   },
 
+  /**
+   * =======================================================================================
+   *   IMPORTANT: HOW TO FIX THE CORS (FILE UPLOAD) ERROR
+   * =======================================================================================
+   * The error "has been blocked by CORS policy" is a security feature that needs to be
+   * configured on your Google Cloud project, NOT in this app's code.
+   *
+   * Follow these steps exactly:
+   *
+   * 1. INSTALL GOOGLE CLOUD SDK:
+   *    If you don't have it, install the `gcloud` command-line tool.
+   *    Instructions: https://cloud.google.com/sdk/docs/install
+   *
+   * 2. AUTHENTICATE YOUR TERMINAL:
+   *    Open your terminal or command prompt and run this command:
+   *    gcloud auth login
+   *
+   * 3. CREATE A `cors.json` FILE:
+   *    Create a new file named `cors.json` on your computer and paste the following content
+   *    into it. This allows your app (from its Vercel URL) to make upload requests.
+   *
+   *    [
+   *      {
+   *        "origin": ["https://studentportalai.vercel.app"],
+   *        "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+   *        "responseHeader": ["Content-Type", "Authorization"],
+   *        "maxAgeSeconds": 3600
+   *      }
+   *    ]
+   *
+   * 4. APPLY THE CONFIGURATION:
+   *    Navigate your terminal to where you saved `cors.json` and run this command:
+   *    gsutil cors set cors.json gs://studentportal-a6495.appspot.com
+   *
+   *    (Your bucket name is `studentportal-a6495.appspot.com`)
+   *
+   * 5. VERIFY:
+   *    It might take a few minutes to apply. After that, refresh your app and try uploading again.
+   *    The error should be gone.
+   * =======================================================================================
+   */
   async uploadProfileImage(file) {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");

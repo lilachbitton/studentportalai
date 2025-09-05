@@ -175,7 +175,7 @@ export const api = {
         email: email,
         phone: phone,
         role: 'student',
-        personal: { name: fullName, email, phone, imageUrl: '/default-avatar.png' },
+        personal: { name: fullName, email, phone, imageUrl: 'https://i.pravatar.cc/150' },
         professional: { title: '', company: '', bio: '' }
       });
 
@@ -257,7 +257,7 @@ export const api = {
     const user = auth.currentUser;
     if (!user) {
         return {
-            personal: { name: 'אורח', email: '', phone: '', imageUrl: '/default-avatar.png' },
+            personal: { name: 'אורח', email: '', phone: '', imageUrl: 'https://i.pravatar.cc/150' },
             professional: { title: '', company: '', bio: '' },
             cycleName: undefined
         };
@@ -273,7 +273,7 @@ export const api = {
                 name: data.personal?.name || data.fullName || 'שם לא זמין',
                 email: data.personal?.email || data.email || user.email,
                 phone: data.personal?.phone || data.phone || '',
-                imageUrl: data.personal?.imageUrl || '/default-avatar.png'
+                imageUrl: data.personal?.imageUrl || 'https://i.pravatar.cc/150'
             },
             professional: {
                 title: data.professional?.title || '',
@@ -285,7 +285,7 @@ export const api = {
     } else {
         console.warn("User document not found in Firestore for UID:", user.uid);
         return {
-            personal: { name: 'משתמש חדש', email: user.email, phone: '', imageUrl: '/default-avatar.png' },
+            personal: { name: 'משתמש חדש', email: user.email, phone: '', imageUrl: 'https://i.pravatar.cc/150' },
             professional: { title: '', company: '', bio: '' },
             cycleName: undefined
         };
@@ -317,6 +317,46 @@ export const api = {
     }
   },
 
+  /*
+    IMPORTANT NOTE FOR THE DEVELOPER: FIXING THE CORS ERROR
+
+    The "CORS policy" error you're seeing in the browser console when uploading an image
+    is a server-side configuration issue with your Firebase Storage bucket, not a bug in the app's code.
+    The browser is blocking the request for security reasons because the storage bucket
+    hasn't been configured to allow requests from your web app's domain.
+
+    To fix this permanently, you need to tell Firebase Storage to trust your app's domain.
+    You can do this by applying a CORS configuration file to your bucket using the 'gsutil' tool.
+
+    **STEPS TO FIX:**
+
+    1. **Install gsutil:** If you don't have it, install the Google Cloud SDK, which includes gsutil:
+        https://cloud.google.com/sdk/docs/install
+
+    2. **Create a `cors.json` file:** Create a new file on your computer named `cors.json` and paste the following content into it.
+        This configuration allows your Vercel-hosted app to make requests.
+
+        ```json
+        [
+        {
+            "origin": ["https://studentportalai.vercel.app"],
+            "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "responseHeader": ["Content-Type", "Authorization"],
+            "maxAgeSeconds": 3600
+        }
+        ]
+        ```
+
+    3. **Apply the configuration:** Open your terminal or command prompt and run the following command.
+        Replace `[YOUR_BUCKET_NAME]` with your actual Firebase Storage bucket name (e.g., `studentportal-a6495.appspot.com`).
+
+        `gsutil cors set cors.json gs://[YOUR_BUCKET_NAME]`
+
+        Example:
+        `gsutil cors set cors.json gs://studentportal-a6495.appspot.com`
+
+    After running this command, the image upload feature should work correctly.
+  */
   async uploadProfileImage(file) {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { LessonPage } from './LessonPage';
@@ -119,8 +120,11 @@ const Sidebar: React.FC<{
 
     return (
         <aside className="w-72 h-screen bg-[#1C2434] text-white flex flex-col p-5 shadow-lg hidden lg:flex">
-            <div className="flex justify-center items-center py-4 mb-5">
-                <img src="/logo.png" alt="לוגו ביזנס אקספרס" className="w-40" />
+            <div className="flex justify-center items-center py-4 mb-5 text-center">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-wider text-white">Business Express</h1>
+                    <p className="text-orange-400 text-xs">Student Portal</p>
+                </div>
             </div>
             <nav className="flex-grow overflow-y-auto">
                 <SidebarLink icon={<DashboardIcon />} label="לוח בקרה" isActive={activeId === 'dashboard'} onClick={onGoToDashboard} />

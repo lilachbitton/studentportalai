@@ -6,15 +6,8 @@
  * It now uses Firebase for authentication and will use Firestore for data.
  */
 import { v4 as uuidv4 } from 'uuid';
+// Fix: Updated Firebase imports to work with the v8 compatibility layer. Modular imports are removed.
 import { auth, db, storage } from './firebase';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  sendPasswordResetEmail,
-  signOut
-} from "firebase/auth";
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore"; 
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 import type { Course, Lesson, StudentProfileData } from '../pages/StudentDashboard';
 import type { Ticket, ConversationMessage } from '../pages/TicketsPage';
@@ -144,14 +137,16 @@ export const api = {
     }
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Fix: Switched to Firebase v8 compat API for authentication.
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
       // Fetch user role from Firestore
-      const userDocRef = doc(db, "users", user.uid);
-      const userDocSnap = await getDoc(userDocRef);
+      // Fix: Switched to Firebase v8 compat API for Firestore.
+      const userDocRef = db.collection("users").doc(user.uid);
+      const userDocSnap = await userDocRef.get();
 
-      if (userDocSnap.exists()) {
+      if (userDocSnap.exists) {
         const userData = userDocSnap.data();
         return { success: true, role: userData.role || 'student' };
       } else {
@@ -171,10 +166,12 @@ export const api = {
   async register(userData) {
     const { email, password, fullName, phone } = userData;
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Fix: Switched to Firebase v8 compat API for authentication.
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
-      await setDoc(doc(db, "users", user.uid), {
+      // Fix: Switched to Firebase v8 compat API for Firestore.
+      await db.collection("users").doc(user.uid).set({
         fullName: fullName,
         email: email,
         phone: phone,
@@ -207,7 +204,8 @@ export const api = {
 
   async forgotPassword(email) {
     try {
-      await sendPasswordResetEmail(auth, email);
+      // Fix: Switched to Firebase v8 compat API for authentication.
+      await auth.sendPasswordResetEmail(email);
       return { success: true, message: 'אם קיים חשבון עם כתובת המייל, ישלח אליך קישור לאיפוס סיסמה.' };
     } catch (error) {
        console.error("Firebase password reset error:", error.code);
@@ -217,7 +215,8 @@ export const api = {
   
   async logout() {
     try {
-      await signOut(auth);
+      // Fix: Switched to Firebase v8 compat API for authentication.
+      await auth.signOut();
       console.log('User logged out');
     } catch (error) {
       console.error("Error signing out: ", error);
@@ -267,10 +266,11 @@ export const api = {
         };
     }
     
-    const userDocRef = doc(db, "users", user.uid);
-    const userDocSnap = await getDoc(userDocRef);
+    // Fix: Switched to Firebase v8 compat API for Firestore.
+    const userDocRef = db.collection("users").doc(user.uid);
+    const userDocSnap = await userDocRef.get();
 
-    if (userDocSnap.exists()) {
+    if (userDocSnap.exists) {
         const data = userDocSnap.data();
         return {
             personal: {
@@ -305,9 +305,11 @@ export const api = {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    const userDocRef = doc(db, "users", user.uid);
+    // Fix: Switched to Firebase v8 compat API for Firestore.
+    const userDocRef = db.collection("users").doc(user.uid);
     try {
-        await updateDoc(userDocRef, {
+        // Fix: Switched to Firebase v8 compat API for Firestore.
+        await userDocRef.update({
             personal: newProfileData.personal,
             professional: newProfileData.professional,
             // also update top-level fields for backwards compatibility
@@ -326,13 +328,21 @@ export const api = {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+    // Fix: Switched to Firebase v8 compat API for Storage.
+    const storageRef = storage.ref(`profile-pictures/${user.uid}`);
     try {
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      // Read the file into an ArrayBuffer for a more robust upload.
+      const arrayBuffer = await file.arrayBuffer();
+      // Upload the ArrayBuffer and explicitly provide the content type.
+      // Fix: Switched to Firebase v8 compat API for Storage.
+      await storageRef.put(arrayBuffer, { contentType: file.type });
       
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
+      // Fix: Switched to Firebase v8 compat API for Storage.
+      const downloadURL = await storageRef.getDownloadURL();
+      
+      // Fix: Switched to Firebase v8 compat API for Firestore.
+      const userDocRef = db.collection("users").doc(user.uid);
+      await userDocRef.update({
           "personal.imageUrl": downloadURL
       });
       

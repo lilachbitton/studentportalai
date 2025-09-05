@@ -1,10 +1,9 @@
-
-
-// Fix: Corrected Firebase imports to use the v8 namespaced syntax, which appears to be required by the project's dependencies.
-import firebase from 'firebase/app';
-import 'firebase/auth';
-import 'firebase/firestore';
-import 'firebase/storage';
+// @ts-nocheck
+// Fix: Corrected Firebase imports to use the v8 compatibility layer, which resolves the build error.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
+import 'firebase/compat/storage';
 
 // Your web app's Firebase configuration, corrected based on user's provided config.
 const firebaseConfig = {

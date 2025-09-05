@@ -6,7 +6,7 @@
  * It now uses Firebase for authentication and will use Firestore for data.
  */
 import { v4 as uuidv4 } from 'uuid';
-// Fix: Updated Firebase imports to work with the v8 compatibility layer. Modular imports are removed.
+// Fix: The project uses Firebase v8, so v9 modular imports are not needed.
 import { auth, db, storage } from './firebase';
 
 import type { Course, Lesson, StudentProfileData } from '../pages/StudentDashboard';
@@ -131,18 +131,16 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 export const api = {
   // --- Authentication ---
   async login(email, password, rememberMe) {
-    // Hardcoded admin login as requested
     if (email.toLowerCase() === 'admin' && password === 'admin') {
       return { success: true, role: 'admin' };
     }
     
     try {
-      // Fix: Switched to Firebase v8 compat API for authentication.
+      // Fix: Use Firebase v8 auth method.
       const userCredential = await auth.signInWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
-      // Fetch user role from Firestore
-      // Fix: Switched to Firebase v8 compat API for Firestore.
+      // Fix: Use Firebase v8 Firestore methods.
       const userDocRef = db.collection("users").doc(user.uid);
       const userDocSnap = await userDocRef.get();
 
@@ -166,11 +164,11 @@ export const api = {
   async register(userData) {
     const { email, password, fullName, phone } = userData;
     try {
-      // Fix: Switched to Firebase v8 compat API for authentication.
+      // Fix: Use Firebase v8 auth method.
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
-      // Fix: Switched to Firebase v8 compat API for Firestore.
+      // Fix: Use Firebase v8 Firestore method.
       await db.collection("users").doc(user.uid).set({
         fullName: fullName,
         email: email,
@@ -204,7 +202,7 @@ export const api = {
 
   async forgotPassword(email) {
     try {
-      // Fix: Switched to Firebase v8 compat API for authentication.
+      // Fix: Use Firebase v8 auth method.
       await auth.sendPasswordResetEmail(email);
       return { success: true, message: 'אם קיים חשבון עם כתובת המייל, ישלח אליך קישור לאיפוס סיסמה.' };
     } catch (error) {
@@ -215,7 +213,7 @@ export const api = {
   
   async logout() {
     try {
-      // Fix: Switched to Firebase v8 compat API for authentication.
+      // Fix: Use Firebase v8 auth method.
       await auth.signOut();
       console.log('User logged out');
     } catch (error) {
@@ -266,7 +264,7 @@ export const api = {
         };
     }
     
-    // Fix: Switched to Firebase v8 compat API for Firestore.
+    // Fix: Use Firebase v8 Firestore methods.
     const userDocRef = db.collection("users").doc(user.uid);
     const userDocSnap = await userDocRef.get();
 
@@ -305,14 +303,12 @@ export const api = {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    // Fix: Switched to Firebase v8 compat API for Firestore.
+    // Fix: Use Firebase v8 Firestore method.
     const userDocRef = db.collection("users").doc(user.uid);
     try {
-        // Fix: Switched to Firebase v8 compat API for Firestore.
         await userDocRef.update({
             personal: newProfileData.personal,
             professional: newProfileData.professional,
-            // also update top-level fields for backwards compatibility
             fullName: newProfileData.personal.name, 
             email: newProfileData.personal.email,
             phone: newProfileData.personal.phone,
@@ -328,19 +324,15 @@ export const api = {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    // Fix: Switched to Firebase v8 compat API for Storage.
+    // Fix: Use Firebase v8 Storage methods.
     const storageRef = storage.ref(`profile-pictures/${user.uid}`);
     try {
-      // Read the file into an ArrayBuffer for a more robust upload.
-      const arrayBuffer = await file.arrayBuffer();
-      // Upload the ArrayBuffer and explicitly provide the content type.
-      // Fix: Switched to Firebase v8 compat API for Storage.
-      await storageRef.put(arrayBuffer, { contentType: file.type });
+      // Pass the file object directly to put.
+      await storageRef.put(file);
       
-      // Fix: Switched to Firebase v8 compat API for Storage.
       const downloadURL = await storageRef.getDownloadURL();
       
-      // Fix: Switched to Firebase v8 compat API for Firestore.
+      // Fix: Use Firebase v8 Firestore methods.
       const userDocRef = db.collection("users").doc(user.uid);
       await userDocRef.update({
           "personal.imageUrl": downloadURL
@@ -355,7 +347,6 @@ export const api = {
 
   async addTicket(ticketData, studentName) {
       await delay(400);
-      // Fix: Explicitly type the new ticket object to match the `Ticket` interface.
       const newTicket: Ticket = {
             id: `TKT-${String(mockTickets.length + 1).padStart(3, '0')}`,
             lastUpdate: new Date().toLocaleDateString('he-IL'),
@@ -478,7 +469,7 @@ export const api = {
   },
   async updateLesson(courseId, cycleId, lessonId, updatedLessonData) {
       await delay(400);
-      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, ...updatedLessonData } : l) } : cy) } : c);
+      mockAdminCourses = mockAdminCourses.map(c => (c.id === courseId) ? { ...c, cyclesData: c.cyclesData.map(cy => (cy.id === cycleId) ? { ...cy, lessons: cy.lessons.map(l => l.id === lessonId ? { ...l, ...updatedLessonData } : l) } : c) } : c);
       return mockAdminCourses;
   },
    async updateStudent(studentId, updatedData) {

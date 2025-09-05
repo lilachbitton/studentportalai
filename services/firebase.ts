@@ -1,9 +1,10 @@
 // Using Firebase v8 compatibility layer to enable v8-style syntax (e.g., firebase.auth())
 // This is required because the rest of the app is written using the Firebase v8 API.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-import 'firebase/compat/firestore';
-import 'firebase/compat/storage';
+// Using full URLs to resolve build errors on Vercel/Vite.
+import firebase from 'https://esm.sh/firebase@10.12.2/compat/app';
+import 'https://esm.sh/firebase@10.12.2/compat/auth';
+import 'https://esm.sh/firebase@10.12.2/compat/firestore';
+import 'https://esm.sh/firebase@10.12.2/compat/storage';
 
 // Your web app's Firebase configuration.
 const firebaseConfig = {

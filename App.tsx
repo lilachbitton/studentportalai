@@ -14,6 +14,8 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [isForgotPasswordModalOpen, setForgotPasswordModalOpen] = useState(false);
 
+  const backgroundImageUrl = '/background.png';
+
   const handleLoginSuccess = (role: UserRole) => setUserRole(role);
   const handleLogout = () => {
     api.logout();
@@ -39,7 +41,8 @@ function App() {
 
   return (
     <div 
-      className="relative min-h-screen w-full bg-slate-900"
+      className="relative min-h-screen w-full bg-cover bg-center"
+      style={{ backgroundImage: `url(${backgroundImageUrl})` }}
     >
       <div className="absolute inset-0 bg-black/60"></div>
       

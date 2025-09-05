@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { CameraIcon } from '../components/Icons';
 import { api } from '../services/api';
-import { FirebaseDebug } from '../components/FirebaseDebug';
 
 export interface StudentProfileData {
     personal: {
@@ -169,7 +168,6 @@ export const StudentProfilePage: React.FC<StudentProfilePageProps> = ({ profile,
     
     return (
         <div className="text-white max-w-4xl mx-auto relative">
-            <FirebaseDebug />
              {feedback.message && (
                 <div className={`absolute -top-4 right-0 font-bold px-6 py-2 rounded-lg shadow-lg z-50 ${feedback.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
                     {feedback.message}

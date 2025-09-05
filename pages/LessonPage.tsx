@@ -155,7 +155,6 @@ const TheCrackerChat: React.FC<{
     isThinking: boolean;
 }> = ({ messages, onSendMessage, isThinking }) => {
     const [newMessage, setNewMessage] = useState('');
-    const crackerAvatarUrl = "https://api.dicebear.com/8.x/bottts/svg?seed=TheCracker";
 
     const handleSend = () => {
         if(newMessage.trim()){
@@ -170,7 +169,7 @@ const TheCrackerChat: React.FC<{
             <div className="flex-grow space-y-4 overflow-y-auto pr-2 mb-4 h-64">
                 {messages.map((msg, i) => (
                     <div key={i} className={`flex items-end gap-2 ${msg.sender === 'you' ? 'justify-end' : ''}`}>
-                        {msg.sender === 'cracker' && <img src={crackerAvatarUrl} alt="Cracker" className="w-8 h-8 rounded-full"/>}
+                        {msg.sender === 'cracker' && <img src="/cracker-avatar.png" alt="Cracker" className="w-8 h-8 rounded-full"/>}
                         <div className={`max-w-xs md:max-w-md p-3 rounded-xl ${msg.sender === 'you' ? 'bg-orange-500 text-white' : 'bg-slate-100 text-gray-800'}`}>
                             <div className="markdown-content">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
@@ -181,7 +180,7 @@ const TheCrackerChat: React.FC<{
                 ))}
                  {isThinking && (
                     <div className="flex items-end gap-2">
-                        <img src={crackerAvatarUrl} alt="Cracker" className="w-8 h-8 rounded-full"/>
+                        <img src="/cracker-avatar.png" alt="Cracker" className="w-8 h-8 rounded-full"/>
                         <div className="max-w-xs md:max-w-md p-3 rounded-xl bg-slate-100 text-gray-800">
                             <div className="flex items-center">
                                 <span className="text-gray-500">המפצחת מנסחת תשובה</span>

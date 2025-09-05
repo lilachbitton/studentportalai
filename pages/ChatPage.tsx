@@ -18,7 +18,7 @@ const AiConversationView: React.FC<{
 
     const handleSend = () => { if(newMessage.trim()){ onSend(newMessage); setNewMessage(''); } };
     
-    const cracker = { name: 'המפצחת', role: 'סוכנת AI', imageUrl: 'https://api.dicebear.com/8.x/bottts/svg?seed=TheCracker' };
+    const cracker = { name: 'המפצחת', role: 'סוכנת AI', imageUrl: '/cracker-avatar.png' };
 
     return (
         <div className="bg-[#1C2434] rounded-2xl flex flex-col h-full">
@@ -72,8 +72,6 @@ const AiChatList: React.FC<{
     courses: Course[];
 }> = ({ sessions, activeLessonId, onSelectChat, allLessons, courses }) => {
     
-    const crackerAvatarUrl = "https://api.dicebear.com/8.x/bottts/svg?seed=TheCracker";
-    
     const getChatDetails = (lessonId: string) => {
         const lesson = allLessons.find(l => l.id === lessonId);
         const course = courses.find(c => c.id === lesson?.courseId);
@@ -95,7 +93,7 @@ const AiChatList: React.FC<{
                     return (
                         <div key={session.sessionId} onClick={() => onSelectChat(session.lessonId)} className={`flex items-center p-3 rounded-lg cursor-pointer mb-2 transition-colors ${activeLessonId === session.lessonId ? 'bg-orange-600/20' : 'hover:bg-[#243041]'}`}>
                             <div className="relative">
-                                <img src={crackerAvatarUrl} alt="המפצחת" className="w-12 h-12 rounded-full" />
+                                <img src="/cracker-avatar.png" alt="המפצחת" className="w-12 h-12 rounded-full" />
                             </div>
                             <div className="flex-1 mr-3 overflow-hidden">
                                 <div className="flex justify-between items-center">

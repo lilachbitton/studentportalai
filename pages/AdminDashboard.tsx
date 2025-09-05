@@ -46,11 +46,8 @@ const AdminSidebar: React.FC<{ onLogout: () => void; activeView: string; setView
 
     return (
         <aside className="w-72 h-screen bg-[#1C2434] text-white flex flex-col p-5 shadow-lg hidden lg:flex">
-            <div className="flex justify-center items-center py-4 mb-5 text-center">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-wider text-white">Business Express</h1>
-                    <p className="text-orange-400 text-xs">Student Portal</p>
-                </div>
+            <div className="flex justify-center items-center py-4 mb-5">
+                <img src="/logo.png" alt="לוגו ביזנס אקספרס" className="w-40" />
             </div>
             <p className="px-3 text-lg font-bold text-orange-400 text-center mb-4">ממשק ניהול</p>
             <nav className="flex-grow overflow-y-auto">

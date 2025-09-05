@@ -3,10 +3,7 @@ import { api } from '../services/api';
 
 // Helper component for the logo, using the image from the public folder.
 const Logo: React.FC = () => (
-    <div className="text-white text-center py-2">
-        <h1 className="text-4xl font-bold tracking-wider">Business Express</h1>
-        <p className="text-orange-400 text-sm">Student Portal</p>
-    </div>
+    <img src="/logo.png" alt="לוגו ביזנס אקספרס" className="w-48" />
 );
 
 const EyeIcon: React.FC = () => (

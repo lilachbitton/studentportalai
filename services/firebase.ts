@@ -1,11 +1,11 @@
-// @ts-nocheck
-// Fix: Corrected Firebase imports to use the v8 compatibility layer, which resolves the build error.
+// Using Firebase v8 compatibility layer to enable v8-style syntax (e.g., firebase.auth())
+// This is required because the rest of the app is written using the Firebase v8 API.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/storage';
 
-// Your web app's Firebase configuration, corrected based on user's provided config.
+// Your web app's Firebase configuration.
 const firebaseConfig = {
   apiKey: "AIzaSyAVG6E8aN0D-wlsgh7EGKj6yGAV55j1I9g",
   authDomain: "studentportal-a6495.firebaseapp.com",
@@ -15,13 +15,15 @@ const firebaseConfig = {
   appId: "1:256260765017:web:16bf97c3ba042165a24848"
 };
 
-
-// Initialize Firebase
+// Initialize Firebase if it hasn't been already.
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
-// Export Firebase services
+// Export the initialized Firebase services for use throughout the app.
 export const auth = firebase.auth();
 export const db = firebase.firestore();
 export const storage = firebase.storage();
+
+// We also export the core firebase object for things like setting persistence.
+export default firebase;

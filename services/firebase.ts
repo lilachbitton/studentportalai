@@ -1,11 +1,10 @@
 
-// Fix: Use namespace imports for Firebase services to avoid potential module resolution issues.
-// This can resolve module resolution issues in some environments without changing the API contract,
-// ensuring compatibility with other files using Firebase v9 modular syntax.
-import * as firebaseApp from "firebase/app";
-import * as firebaseAuth from "firebase/auth";
-import * as firestore from "firebase/firestore";
-import * as firebaseStorage from "firebase/storage";
+
+// Fix: Corrected Firebase imports to use named imports as required by the Firebase v9 modular SDK.
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration, corrected based on user's provided config.
 const firebaseConfig = {
@@ -19,9 +18,9 @@ const firebaseConfig = {
 
 
 // Initialize Firebase
-const app = firebaseApp.initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 
 // Export Firebase services
-export const auth = firebaseAuth.getAuth(app);
-export const db = firestore.getFirestore(app);
-export const storage = firebaseStorage.getStorage(app);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);

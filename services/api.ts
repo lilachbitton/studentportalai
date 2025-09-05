@@ -321,8 +321,9 @@ export const api = {
 
     const storageRef = ref(storage, `profile-pictures/${user.uid}`);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      await uploadBytes(storageRef, arrayBuffer, { contentType: file.type });
+      // Pass the file object directly to uploadBytes. 
+      // The SDK is optimized to handle File/Blob objects efficiently.
+      await uploadBytes(storageRef, file);
       
       const downloadURL = await getDownloadURL(storageRef);
       

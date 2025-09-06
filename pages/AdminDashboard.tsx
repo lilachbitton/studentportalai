@@ -9,6 +9,8 @@ import { AdminEditLessonPage } from './AdminEditLessonPage';
 import { AdminStudentsPage, AdminStudent } from './AdminStudentsPage';
 import { AdminEditStudentPage } from './AdminEditStudentPage';
 import { KarinHubPage } from './KarinHubPage';
+// FIX: Import the new TeamPage component
+import { TeamPage } from './TeamPage';
 import { TicketsPage, Ticket } from './TicketsPage';
 import { DashboardIcon, CoursesIcon, TeamIcon, TicketsIcon, LogoutIcon, BellIcon, SearchIcon, ClipboardCheckIcon } from '../components/Icons';
 
@@ -43,6 +45,8 @@ const Sidebar: React.FC<{ activeView: AdminView, setView: (view: AdminView) => v
                 <SidebarLink icon={<DashboardIcon />} label="סקירה כללית" viewId="overview" />
                 <SidebarLink icon={<CoursesIcon />} label="ניהול קורסים" viewId="courses" />
                 <SidebarLink icon={<TeamIcon />} label="ניהול תלמידים" viewId="students" />
+                {/* FIX: Add sidebar link for Team Management */}
+                <SidebarLink icon={<TeamIcon />} label="ניהול צוות" viewId="team" />
                 <SidebarLink icon={<TicketsIcon />} label="ניהול פניות" viewId="tickets" />
                 <SidebarLink icon={<ClipboardCheckIcon />} label="מרכז הבקרה של קרין" viewId="karin-hub" />
             </nav>
@@ -259,6 +263,8 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                                         onEditCourse={(id) => setView({ type: 'edit-course', id })}
                                     />;
             case 'students': return <AdminStudentsPage students={students} onEditStudent={(id) => setView({ type: 'edit-student', id })} />;
+            // FIX: Add case to render TeamPage
+            case 'team': return <TeamPage teamMembers={teamMembers} />;
             case 'tickets': return <TicketsPage tickets={tickets} unreadTickets={[]} onReply={handleAdminReply} onNewTicket={() => {}} onMarkAsRead={() => {}} />; // Simplified for admin
             case 'karin-hub': return <KarinHubPage allCourses={courses} allStudents={students} allTeamMembers={teamMembers} onUpdateStudentEnrollmentDetails={handleUpdateStudentEnrollmentDetails} />;
             default: return <AdminOverviewPage students={students} courses={courses} tickets={tickets} />;

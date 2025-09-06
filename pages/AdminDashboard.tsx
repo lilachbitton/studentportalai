@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
+
 import { AdminOverviewPage } from './AdminOverviewPage';
 import { AdminCoursesPage, AdminCourse, Cycle, AdminLesson, AdminTeamMember, StudentEnrollment } from './AdminCoursesPage';
 import { AdminEditCoursePage } from './AdminEditCoursePage';
@@ -6,82 +8,75 @@ import { AdminEditCyclePage } from './AdminEditCyclePage';
 import { AdminEditLessonPage } from './AdminEditLessonPage';
 import { AdminStudentsPage, AdminStudent } from './AdminStudentsPage';
 import { AdminEditStudentPage } from './AdminEditStudentPage';
-import { Ticket } from './TicketsPage';
 import { KarinHubPage } from './KarinHubPage';
-import { api } from '../services/api';
+import { TicketsPage, Ticket } from './TicketsPage';
+import { DashboardIcon, CoursesIcon, TeamIcon, TicketsIcon, LogoutIcon, BellIcon, SearchIcon, ClipboardCheckIcon } from '../components/Icons';
 
-import {
-    DashboardIcon,
-    CoursesIcon,
-    TeamIcon,
-    LogoutIcon,
-    TicketsIcon,
-    ChatIcon,
-    ClipboardCheckIcon,
-} from '../components/Icons';
+type AdminView = 
+  | 'overview'
+  | 'courses'
+  | { type: 'edit-course', id: string }
+  | { type: 'edit-cycle', courseId: string, cycleId: string }
+  | { type: 'edit-lesson', courseId: string, cycleId: string, lessonId: string }
+  | 'students'
+  | { type: 'edit-student', id: string }
+  | 'team'
+  | 'tickets'
+  | 'karin-hub';
 
-type AdminView = 'overview' 
-    | 'courses' 
-    | 'students' 
-    | 'team' 
-    | 'tickets' 
-    | 'chat' 
-    | 'karins-hub'
-    | { type: 'edit-course'; courseId: string; } 
-    | { type: 'edit-cycle'; courseId: string; cycleId: string; }
-    | { type: 'edit-lesson'; courseId: string; cycleId: string; lessonId: string; }
-    | { type: 'edit-student'; studentId: string; };
+const Sidebar: React.FC<{ activeView: AdminView, setView: (view: AdminView) => void, onLogout: () => void }> = ({ activeView, setView, onLogout }) => {
+    const activeViewId = typeof activeView === 'string' ? activeView : activeView.type;
 
-
-const AdminSidebar: React.FC<{ onLogout: () => void; activeView: string; setView: (view: AdminView) => void }> = ({ onLogout, activeView, setView }) => {
-    const links = [
-        { id: 'overview', label: 'סקירה כללית', icon: <DashboardIcon /> },
-        { id: 'courses', label: 'ניהול קורסים', icon: <CoursesIcon /> },
-        { id: 'students', label: 'ניהול תלמידים', icon: <TeamIcon /> },
-        { id: 'karins-hub', label: 'מרכז הבקרה של קרין', icon: <ClipboardCheckIcon /> },
-        { id: 'team', label: 'ניהול צוות', icon: <TeamIcon /> },
-        { id: 'tickets', label: 'ניהול פניות', icon: <TicketsIcon /> },
-        { id: 'chat', label: 'צ\'אט', icon: <ChatIcon /> },
-    ];
+    const SidebarLink: React.FC<{ icon: React.ReactNode; label: string; viewId: AdminView; onClick?: () => void }> = ({ icon, label, viewId, onClick }) => (
+        <a href="#" onClick={e => { e.preventDefault(); onClick ? onClick() : setView(viewId); }} className={`relative flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${activeViewId === viewId ? 'bg-orange-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`}>
+            {icon}
+            <span className="mr-4 font-semibold">{label}</span>
+        </a>
+    );
 
     return (
         <aside className="w-72 h-screen bg-[#1C2434] text-white flex flex-col p-5 shadow-lg hidden lg:flex">
             <div className="flex justify-center items-center py-4 mb-5">
-                <img src="/logo.png" alt="לוגו ביזנס אקספרס" className="w-40" />
+                <img src="/logo.png" alt="Business Express Logo" className="h-12 w-auto" />
             </div>
-            <p className="px-3 text-lg font-bold text-orange-400 text-center mb-4">ממשק ניהול</p>
             <nav className="flex-grow overflow-y-auto">
-                {links.map(link => (
-                    <a href="#" key={link.id} onClick={e => { e.preventDefault(); setView(link.id as AdminView); }} className={`relative flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${activeView === link.id ? 'bg-orange-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`}>
-                        {link.icon}
-                        <span className="mr-4 font-semibold">{link.label}</span>
-                    </a>
-                ))}
+                <SidebarLink icon={<DashboardIcon />} label="סקירה כללית" viewId="overview" />
+                <SidebarLink icon={<CoursesIcon />} label="ניהול קורסים" viewId="courses" />
+                <SidebarLink icon={<TeamIcon />} label="ניהול תלמידים" viewId="students" />
+                <SidebarLink icon={<TicketsIcon />} label="ניהול פניות" viewId="tickets" />
+                <SidebarLink icon={<ClipboardCheckIcon />} label="מרכז הבקרה של קרין" viewId="karin-hub" />
             </nav>
             <div className="mt-auto">
-                 <a href="#" onClick={e => { e.preventDefault(); onLogout(); }} className={`relative flex items-center p-3 my-1 rounded-lg transition-colors duration-200 text-gray-300 hover:bg-gray-700 hover:text-white`}>
-                    <LogoutIcon />
-                    <span className="mr-4 font-semibold">התנתקות</span>
-                </a>
+                <SidebarLink icon={<LogoutIcon />} label="התנתקות" viewId={'logout' as any} onClick={onLogout} />
             </div>
         </aside>
     );
 };
 
-const AdminHeader: React.FC = () => (
-    <header className="flex justify-between items-center p-5 bg-[#1C2434] text-slate-300 border-b border-slate-700">
-        <div>
-            {/* Can add search or other header elements later */}
-        </div>
-        <div className="flex items-center space-x-4">
-            <div className="text-right">
-                <div className="font-bold text-white">מנהל מערכת</div>
-                <div className="text-sm text-slate-400">Admin</div>
+const Header: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+    return (
+        <header className="flex justify-between items-center p-5 bg-[#1C2434] text-slate-300 border-b border-slate-700">
+            <div className="relative">
+                <input type="search" placeholder="חיפוש..." className="rounded-full py-2 pr-10 pl-4 focus:outline-none focus:ring-2 focus:ring-orange-500 w-64 bg-[#243041] text-slate-300 placeholder-slate-500" />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <SearchIcon />
+                </div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center font-bold">A</div>
-        </div>
-    </header>
-);
+            <div className="flex items-center space-x-4">
+                <button className="relative hover:text-orange-600 text-slate-300">
+                    <BellIcon />
+                </button>
+                <div className="flex items-center space-x-2 pl-4 cursor-pointer">
+                    <div className="text-right">
+                        <div className="font-bold text-white">מנהל מערכת</div>
+                        <div className="text-sm text-slate-400">Admin</div>
+                    </div>
+                    <img src="/default-avatar.png" alt="תמונת פרופיל" className="w-10 h-10 rounded-full"/>
+                </div>
+            </div>
+        </header>
+    );
+};
 
 export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [view, setView] = useState<AdminView>('overview');
@@ -91,36 +86,34 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [coursesData, studentsData, teamData, ticketsData] = await Promise.all([
+                api.getAdminCourses(),
+                api.getAdminStudents(),
+                api.getAdminTeamMembers(),
+                api.getAdminTickets(),
+            ]);
+            setCourses(coursesData);
+            setStudents(studentsData);
+            setTeamMembers(teamData);
+            setTickets(ticketsData);
+        } catch (e) {
+            console.error("Failed to load admin data", e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const loadAdminData = async () => {
-            try {
-                setIsLoading(true);
-                const [coursesData, studentsData, teamData, ticketsData] = await Promise.all([
-                    api.getAdminCourses(),
-                    api.getAdminStudents(),
-                    api.getAdminTeamMembers(),
-                    api.getAdminTickets()
-                ]);
-                setCourses(coursesData);
-                setStudents(studentsData);
-                setTeamMembers(teamData);
-                setTickets(ticketsData);
-            } catch (error) {
-                console.error("Failed to load admin data:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadAdminData();
+        fetchData();
     }, []);
 
+    // --- DATA MUTATION HANDLERS ---
     const handleAddCourse = async (courseData: Omit<AdminCourse, 'id' | 'cyclesData' | 'students'>) => {
         const updatedCourses = await api.addCourse(courseData);
         setCourses(updatedCourses);
-    };
-
-    const handleSelectCourseToEdit = (courseId: string) => {
-        setView({ type: 'edit-course', courseId });
     };
 
     const handleUpdateCourse = async (courseId: string, updatedData: Partial<Omit<AdminCourse, 'id' | 'cyclesData' | 'students'>>) => {
@@ -128,219 +121,156 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
         setCourses(updatedCourses);
     };
 
-    const handleAddCycle = async (courseId: string, cycleData: Omit<Cycle, 'id'| 'students' | 'lessons'>) => {
+    const handleAddCycle = async (courseId: string, cycleData: Omit<Cycle, 'id' | 'students' | 'lessons'>) => {
         const updatedCourses = await api.addCycle(courseId, cycleData);
         setCourses(updatedCourses);
     };
 
-     const handleUpdateCycle = async (courseId: string, cycleId: string, updatedData: Partial<Omit<Cycle, 'id' | 'students' | 'lessons'>>) => {
+    const handleUpdateCycle = async (courseId: string, cycleId: string, updatedData: Partial<Omit<Cycle, 'id' | 'students' | 'lessons'>>) => {
         const updatedCourses = await api.updateCycle(courseId, cycleId, updatedData);
         setCourses(updatedCourses);
     };
-    
-    const handleBackToCourses = () => {
-        setView('courses');
-    };
 
-    const handleSelectCycleToEdit = (courseId: string, cycleId: string) => {
-        setView({ type: 'edit-cycle', courseId, cycleId });
-    };
-
-    const handleBackToCourseEdit = () => {
-         if(typeof view === 'object' && view.type && (view.type === 'edit-cycle' || view.type === 'edit-lesson')) {
-            setView({ type: 'edit-course', courseId: view.courseId });
-        }
-    };
-    
     const handleAddLesson = async (courseId: string, cycleId: string, lessonName: string) => {
         const updatedCourses = await api.addLesson(courseId, cycleId, lessonName);
         setCourses(updatedCourses);
     };
-
-    const handleSelectLessonToEdit = (courseId: string, cycleId: string, lessonId: string) => {
-        setView({ type: 'edit-lesson', courseId, cycleId, lessonId });
-    };
     
-    const handleBackToCycleEdit = (courseId: string, cycleId: string) => {
-        setView({ type: 'edit-cycle', courseId, cycleId });
-    }
-
     const handleUpdateLessonTitle = async (courseId: string, cycleId: string, lessonId: string, newTitle: string) => {
         const updatedCourses = await api.updateLessonTitle(courseId, cycleId, lessonId, newTitle);
         setCourses(updatedCourses);
-    }
+    };
 
     const handleDeleteLesson = async (courseId: string, cycleId: string, lessonId: string) => {
-       const updatedCourses = await api.deleteLesson(courseId, cycleId, lessonId);
-       setCourses(updatedCourses);
-    }
+        const updatedCourses = await api.deleteLesson(courseId, cycleId, lessonId);
+        setCourses(updatedCourses);
+    };
     
     const handleUpdateLesson = async (courseId: string, cycleId: string, lessonId: string, updatedLessonData: Omit<AdminLesson, 'id' | 'title'>) => {
-       const updatedCourses = await api.updateLesson(courseId, cycleId, lessonId, updatedLessonData);
-       setCourses(updatedCourses);
-    };
-
-    const handleSelectStudentToEdit = (studentId: string) => {
-        setView({ type: 'edit-student', studentId });
-    };
-
-    const handleBackToStudents = () => {
-        setView('students');
+        const updatedCourses = await api.updateLesson(courseId, cycleId, lessonId, updatedLessonData);
+        setCourses(updatedCourses);
     };
 
     const handleUpdateStudent = async (studentId: string, updatedData: Partial<Omit<AdminStudent, 'id'>>) => {
         const updatedStudents = await api.updateStudent(studentId, updatedData);
         setStudents(updatedStudents);
     };
-    
+
     const handleChangeStudentCycle = async (studentId: string, courseId: string, newCycleId: string) => {
-       const updatedStudents = await api.changeStudentCycle(studentId, courseId, newCycleId);
-       setStudents(updatedStudents);
+        const updatedStudents = await api.changeStudentCycle(studentId, courseId, newCycleId);
+        setStudents(updatedStudents);
     };
-    
+
     const handleUpdateStudentEnrollment = async (studentId: string, courseId: string, newMentorId: string) => {
         const updatedStudents = await api.updateStudentEnrollment(studentId, courseId, newMentorId);
         setStudents(updatedStudents);
     };
 
-    const handleUpdateStudentEnrollmentDetails = async (
-        studentId: string, 
-        courseId: string, 
-        cycleId: string, 
-        field: keyof StudentEnrollment, 
-        value: any
-    ) => {
-         const updatedStudents = await api.updateStudentEnrollmentDetails(studentId, courseId, cycleId, field, value);
-         setStudents(updatedStudents);
+    const handleUpdateStudentEnrollmentDetails = async (studentId: string, courseId: string, cycleId: string, field: keyof StudentEnrollment, value: any) => {
+        const updatedStudents = await api.updateStudentEnrollmentDetails(studentId, courseId, cycleId, field, value);
+        setStudents(updatedStudents);
     };
     
-    const handleAddNewStudent = async (courseId: string, cycleId: string, studentData: Omit<AdminStudent, 'id' | 'enrollments' | 'joinDate' | 'status'>) => {
+    const handleAddNewStudentToCycle = async (courseId: string, cycleId: string, studentData: Omit<AdminStudent, 'id' | 'enrollments' | 'joinDate' | 'status'>) => {
         const updatedStudents = await api.addNewStudentToCycle(courseId, cycleId, studentData);
         setStudents(updatedStudents);
     };
 
-    const handleUpdateStudentDetails = async (studentId: string, field: keyof AdminStudent, value: any) => {
+     const handleUpdateStudentDetails = async (studentId: string, field: keyof Omit<AdminStudent, 'id' | 'enrollments' | 'joinDate' >, value: any) => {
         const updatedStudents = await api.updateStudentDetails(studentId, field, value);
         setStudents(updatedStudents);
     };
 
-    const handleAdminReplyToTicket = async (ticketId: string, replyText: string) => {
+    const handleAdminReply = async (ticketId: string, replyText: string) => {
         const updatedTickets = await api.adminReplyToTicket(ticketId, replyText);
         setTickets(updatedTickets);
     };
-
+    
+    // --- RENDER LOGIC ---
 
     const renderContent = () => {
         if (isLoading) {
-            return <div className="flex justify-center items-center h-full"><div className="dot-flashing"></div></div>;
+            return <div className="flex justify-center items-center h-full text-white"><div className="dot-flashing"></div></div>;
         }
 
-        if (typeof view === 'object' && view.type) {
-            if (view.type === 'edit-student') {
-                const student = students.find(s => s.id === view.studentId);
-                const studentTickets = tickets.filter(t => t.studentId === view.studentId);
-                if (student) {
-                    return <AdminEditStudentPage 
-                                student={student} 
-                                allCourses={courses}
-                                allTeamMembers={teamMembers}
-                                tickets={studentTickets}
-                                onBack={handleBackToStudents} 
-                                onUpdateStudent={handleUpdateStudent}
-                                onChangeCycle={handleChangeStudentCycle}
-                                onUpdateEnrollment={handleUpdateStudentEnrollment}
-                                onAdminReply={handleAdminReplyToTicket}
-                            />;
-                }
-                 // If student not found, go back to the list
-                setView('students');
-                return null;
-            }
-            
-            const course = courses.find(c => c.id === view.courseId);
-            if (!course) { 
-                setView('courses'); 
-                return null; 
-            }
-
+        if (typeof view === 'object') {
             if (view.type === 'edit-course') {
-                return <AdminEditCoursePage 
-                            course={course} 
-                            allTeamMembers={teamMembers}
-                            onUpdateCourse={handleUpdateCourse} 
-                            onBack={handleBackToCourses} 
-                            onAddCycle={handleAddCycle}
-                            onUpdateCycle={handleUpdateCycle}
-                            onEditCycle={(cycleId) => handleSelectCycleToEdit(course.id, cycleId)}
-                        />;
-            } 
-            
-            if (view.type === 'edit-cycle') {
-                 const cycle = course.cyclesData.find(cy => cy.id === view.cycleId);
-                 if (cycle) {
-                    return <AdminEditCyclePage 
-                                course={course} 
-                                cycle={cycle} 
-                                allStudents={students}
-                                allTeamMembers={teamMembers}
-                                onUpdateCycle={handleUpdateCycle}
-                                onBack={handleBackToCourseEdit} 
-                                onAddLesson={(lessonName) => handleAddLesson(course.id, cycle.id, lessonName)}
-                                onSelectLessonToEdit={(lessonId) => handleSelectLessonToEdit(course.id, cycle.id, lessonId)}
-                                onUpdateLessonTitle={(lessonId, newTitle) => handleUpdateLessonTitle(course.id, cycle.id, lessonId, newTitle)}
-                                onDeleteLesson={(lessonId) => handleDeleteLesson(course.id, cycle.id, lessonId)}
-                                onUpdateStudentEnrollmentDetails={handleUpdateStudentEnrollmentDetails}
-                                onAddNewStudent={(studentData) => handleAddNewStudent(course.id, cycle.id, studentData)}
-                                onUpdateStudentDetails={handleUpdateStudentDetails}
-                            />;
-                 }
+                const course = courses.find(c => c.id === view.id);
+                return course ? <AdminEditCoursePage 
+                    course={course} 
+                    allTeamMembers={teamMembers}
+                    onBack={() => setView('courses')} 
+                    onUpdateCourse={handleUpdateCourse}
+                    onAddCycle={(courseId, cycleData) => handleAddCycle(courseId, cycleData)}
+                    onUpdateCycle={(courseId, cycleId, updatedData) => handleUpdateCycle(courseId, cycleId, updatedData)}
+                    onEditCycle={(cycleId) => setView({ type: 'edit-cycle', courseId: course.id, cycleId: cycleId })}
+                /> : <div>Course not found.</div>;
             }
-
+            if (view.type === 'edit-cycle') {
+                const course = courses.find(c => c.id === view.courseId);
+                const cycle = course?.cyclesData.find(cy => cy.id === view.cycleId);
+                return course && cycle ? <AdminEditCyclePage
+                    course={course}
+                    cycle={cycle}
+                    allStudents={students}
+                    allTeamMembers={teamMembers}
+                    onBack={() => setView({ type: 'edit-course', id: course.id })}
+                    onAddLesson={(lessonName) => handleAddLesson(course.id, cycle.id, lessonName)}
+                    onUpdateLessonTitle={(lessonId, newTitle) => handleUpdateLessonTitle(course.id, cycle.id, lessonId, newTitle)}
+                    onDeleteLesson={(lessonId) => handleDeleteLesson(course.id, cycle.id, lessonId)}
+                    onSelectLessonToEdit={(lessonId) => setView({ type: 'edit-lesson', courseId: course.id, cycleId: cycle.id, lessonId })}
+                    onUpdateCycle={(courseId, cycleId, updatedData) => handleUpdateCycle(courseId, cycleId, updatedData)}
+                    onUpdateStudentEnrollmentDetails={handleUpdateStudentEnrollmentDetails}
+                    onAddNewStudent={(studentData) => handleAddNewStudentToCycle(course.id, cycle.id, studentData)}
+                    onUpdateStudentDetails={handleUpdateStudentDetails}
+                /> : <div>Cycle or course not found.</div>;
+            }
             if (view.type === 'edit-lesson') {
-                const cycle = course.cyclesData.find(cy => cy.id === view.cycleId);
+                const course = courses.find(c => c.id === view.courseId);
+                const cycle = course?.cyclesData.find(cy => cy.id === view.cycleId);
                 const lesson = cycle?.lessons.find(l => l.id === view.lessonId);
-                if (cycle && lesson) {
-                    return <AdminEditLessonPage 
-                                lesson={lesson} 
-                                onBack={() => handleBackToCycleEdit(course.id, cycle.id)}
-                                onUpdateLesson={(data) => handleUpdateLesson(course.id, cycle.id, lesson.id, data)}
-                            />
-                }
+                return lesson ? <AdminEditLessonPage 
+                    lesson={lesson} 
+                    onBack={() => setView({ type: 'edit-cycle', courseId: view.courseId, cycleId: view.cycleId })}
+                    onUpdateLesson={(updatedData) => handleUpdateLesson(view.courseId, view.cycleId, view.lessonId, updatedData)}
+                /> : <div>Lesson not found.</div>;
+            }
+            if (view.type === 'edit-student') {
+                const student = students.find(s => s.id === view.id);
+                return student ? <AdminEditStudentPage
+                    student={student}
+                    allCourses={courses}
+                    allTeamMembers={teamMembers}
+                    tickets={tickets.filter(t => t.studentId === student.id)}
+                    onBack={() => setView('students')}
+                    onUpdateStudent={handleUpdateStudent}
+                    onChangeCycle={handleChangeStudentCycle}
+                    onUpdateEnrollment={handleUpdateStudentEnrollment}
+                    onAdminReply={handleAdminReply}
+                /> : <div>Student not found.</div>;
             }
         }
         
         switch (view) {
-            case 'overview':
-                return <AdminOverviewPage />;
-            case 'courses':
-                return <AdminCoursesPage courses={courses} onAddCourse={handleAddCourse} onEditCourse={handleSelectCourseToEdit} />;
-            case 'students':
-                return <AdminStudentsPage students={students} onEditStudent={handleSelectStudentToEdit} />;
-            case 'karins-hub':
-                return <KarinHubPage 
-                            allCourses={courses} 
-                            allStudents={students} 
-                            allTeamMembers={teamMembers} 
-                            onUpdateStudentEnrollmentDetails={handleUpdateStudentEnrollmentDetails} 
-                        />;
-            default:
-                return <AdminOverviewPage />;
+            case 'overview': return <AdminOverviewPage students={students} courses={courses} tickets={tickets} />;
+            case 'courses': return <AdminCoursesPage 
+                                        courses={courses} 
+                                        onAddCourse={handleAddCourse} 
+                                        onEditCourse={(id) => setView({ type: 'edit-course', id })}
+                                    />;
+            case 'students': return <AdminStudentsPage students={students} onEditStudent={(id) => setView({ type: 'edit-student', id })} />;
+            case 'tickets': return <TicketsPage tickets={tickets} unreadTickets={[]} onReply={handleAdminReply} onNewTicket={() => {}} onMarkAsRead={() => {}} />; // Simplified for admin
+            case 'karin-hub': return <KarinHubPage allCourses={courses} allStudents={students} allTeamMembers={teamMembers} onUpdateStudentEnrollmentDetails={handleUpdateStudentEnrollmentDetails} />;
+            default: return <AdminOverviewPage students={students} courses={courses} tickets={tickets} />;
         }
-    };
-    
-    const getActiveViewName = (v: AdminView): string => {
-        if (typeof v === 'string') return v;
-        if (v.type === 'edit-course' || v.type === 'edit-cycle' || v.type === 'edit-lesson') return 'courses';
-        if (v.type === 'edit-student') return 'students';
-        return 'overview';
     }
 
     return (
-        <div className="flex h-screen bg-[#1C2434] text-gray-800 font-sans">
-            <AdminSidebar onLogout={onLogout} activeView={getActiveViewName(view)} setView={setView} />
+        <div className="flex h-screen bg-[#1C2434] font-sans">
+            <Sidebar activeView={view} setView={setView} onLogout={onLogout} />
             <div className="flex-1 flex flex-col overflow-hidden">
-                <AdminHeader />
-                <main className="flex-1 overflow-x-hidden overflow-y-auto p-8 bg-[#243041] transition-colors duration-300">
+                <Header onLogout={onLogout} />
+                <main className="flex-1 overflow-x-hidden overflow-y-auto p-8">
                     {renderContent()}
                 </main>
             </div>
